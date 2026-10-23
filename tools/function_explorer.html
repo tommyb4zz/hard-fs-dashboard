@@ -1,0 +1,167 @@
+<!--
+Purpose: Present the generated function inventory offline, with search, file filters, source
+comments and navigable incoming/outgoing call/reference graphs. The generator replaces the
+JSON marker below; this page reads that data without fetching or executing application code.
+CSS defines a two-column desktop layout and a stacked layout below 800 px. Each displayed
+comment/name uses literal text to avoid interpreting source strings as HTML. See CODE_GUIDE.md
+for module-level explanations and the source-graph limits described in the page header.
+-->
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard function explorer</title>
+<style>
+:root { color-scheme: light; font: 16px/1.5 system-ui, sans-serif; color: #15283b; background: #f0f4f7; }
+* { box-sizing: border-box; } body { margin: 0; } header { padding: 24px 32px; background: #123047; color: white; }
+h1 { font-size: 26px; margin: 0 0 8px; } header p { max-width: 950px; margin: 0; color: #d6e4ef; }
+main { display: grid; grid-template-columns: 340px minmax(0, 1fr); min-height: calc(100vh - 140px); }
+aside { background: white; border-right: 1px solid #d3dfe8; padding: 20px; }
+label, #count { display: block; margin-bottom: 8px; } input, select { width: 100%; padding: 10px; border: 1px solid #98adbf; border-radius: 6px; font: inherit; margin-bottom: 14px; }
+#list { max-height: 70vh; overflow: auto; } button { font: inherit; cursor: pointer; }
+#list button { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid #e6edf3; background: white; padding: 10px 8px; overflow-wrap: anywhere; }
+#list button[aria-current=true] { color: #075460; background: #e7f5f6; } button:hover { background: #edf4f8 !important; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid #1c8999; outline-offset: 2px; }
+small { display: block; color: #526679; } article { padding: 24px 32px; min-width: 0; } h2 { font-size: 22px; overflow-wrap: anywhere; margin-top: 0; }
+.card { background: white; border: 1px solid #d3dfe8; border-radius: 10px; padding: 20px; margin-bottom: 20px; } #location { color: #526679; }
+svg { width: 100%; min-width: 700px; height: auto; } #graph { overflow: auto; } .columns { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.columns button { border: 0; background: #eff6fa; margin: 3px; padding: 6px 10px; border-radius: 5px; overflow-wrap: anywhere; text-align: left; }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; } a { color: #126a81; }
+@media(max-width: 800px) { main { grid-template-columns: 1fr; } aside { border-right: 0; } #list { max-height: 230px; } article, header { padding: 20px; } .columns { grid-template-columns: 1fr; } }
+</style>
+<header><h1>Dashboard function explorer</h1><p>Source locations, documented behavior and call relationships. Solid arrows are resolved symbolic calls; dotted arrows are references such as registered callbacks. Conditional code is included; this is a source graph, not an execution trace.</p></header>
+<main>
+<aside><label for="search">Find a function</label><input id="search" type="search" placeholder="Name, file or description"><label for="file">Source file</label><select id="file"><option value="">All project files</option></select><small id="count" role="status"></small><nav id="list" aria-label="Project functions"></nav></aside>
+<article><div class="card"><h2 id="name">Select a function</h2><p id="location"></p><p id="description"></p></div><div class="card"><h3>Function relationships</h3><small id="graph-note"></small><div id="graph"></div></div><div class="card columns"><section><h3>Incoming calls / references</h3><div id="incoming"></div></section><section><h3>Outgoing calls / references</h3><div id="outgoing"></div></section></div><div class="card"><h3>Other call expressions</h3><p>These targets are external, indirect or ambiguous in this inventory. No runtime destination is inferred.</p><pre id="external"></pre></div></article>
+</main>
+<script id="data" type="application/json">__INVENTORY_JSON__</script>
+<script>
+// Load the generator's inert JSON data, not executable project sources. The map callback
+// converts each definition to an [id, definition] pair so navigation can look it up directly.
+const inventory = JSON.parse(document.getElementById('data').textContent);
+const functions = inventory.functions;
+// Index each source item under its exact generated ID, retaining duplicate symbol names.
+const byId = new Map(functions.map(item => [item.id, item]));
+let selected = null;
+
+// Set the text of the existing element identified by id; value is a source-derived string.
+// Mutates only textContent and returns nothing. Callers use IDs defined in this template;
+// this helper does not create missing elements or interpret source comments as HTML markup.
+function setText(id, value) { document.getElementById(id).textContent = value; }
+
+// Return a new button for an inventory item, optionally labelled with its call/reference kind.
+// Include file:line, mark the selected function and register a click callback that selects
+// that item's stable ID. The callback does not execute the inventoried function. The returned
+// element is appended by the list/card caller, so constructing it does not change the list.
+function functionButton(item, kind = '') {
+  const button = document.createElement('button');
+  button.type = 'button'; button.textContent = item.name + (kind ? ' · ' + kind : '');
+  const detail = document.createElement('small'); detail.textContent = item.file + ':' + item.line;
+  button.append(detail);
+  // Navigate to this source definition when the button is clicked; retain its item in the closure.
+  button.addEventListener('click', () => selectFunction(item.id));
+  if (selected === item.id) button.setAttribute('aria-current', 'true');
+  return button;
+}
+
+// Rebuild navigation from the current search text and exact file selection. Match the
+// lowercased name, path and explanation, then report matched/total counts in the status field.
+// This changes DOM buttons only; the full inventory and selected detail remain unchanged.
+function renderList() {
+  const term = document.getElementById('search').value.toLowerCase();
+  const file = document.getElementById('file').value;
+  // Keep an item only if it satisfies both filters; empty fields accept every item.
+  const matches = functions.filter(item => (!file || item.file === file) && (item.name + ' ' + item.file + ' ' + item.description).toLowerCase().includes(term));
+  const list = document.getElementById('list'); list.replaceChildren();
+  // Append one source-navigation button for each retained definition in inventory order.
+  matches.forEach(item => list.append(functionButton(item)));
+  setText('count', matches.length + ' of ' + functions.length + ' functions');
+}
+
+// Create an SVG-namespace element under parent and return it. tag and attributes come from
+// this template's graph code; optional text is assigned with textContent. Attribute strings
+// select coordinates/styles rather than executing source-derived function names.
+function addSvg(parent, tag, attributes, text) {
+  const element = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  // Apply each supplied literal SVG attribute, including geometry and accessible names.
+  Object.entries(attributes).forEach(([key, value]) => element.setAttribute(key, value));
+  if (text !== undefined) element.textContent = text;
+  parent.append(element); return element;
+}
+
+// Replace the local SVG graph for one selected function. incoming/outgoing are already
+// resolved source edges. Limit each side to twelve nodes and scale height for readable rows;
+// the separate relationship lists keep all edges. Solid/dotted strokes distinguish calls
+// from references, not measured runtime execution. No global layout engine/network is used.
+function drawGraph(item, incoming, outgoing) {
+  const parent = document.getElementById('graph'); parent.replaceChildren();
+  const left = incoming.slice(0, 12), right = outgoing.slice(0, 12);
+  const height = Math.max(200, Math.max(left.length, right.length) * 64 + 40);
+  const svg = addSvg(parent, 'svg', {viewBox: '0 0 960 ' + height, role: 'img', 'aria-label': 'Call and reference graph for ' + item.name});
+  const defs = addSvg(svg, 'defs', {});
+  const marker = addSvg(defs, 'marker', {id: 'arrow', viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 6, markerHeight: 6, orient: 'auto-start-reverse'});
+  addSvg(marker, 'path', {d: 'M 0 0 L 10 5 L 0 10 z', fill: '#52768b'});
+
+  // Draw a source-definition node at SVG x/y; center changes its colors. The shortened name
+  // is visual only; its accessible label keeps the full name. Click/Enter/Space navigate to
+  // target.id and return no value. These handlers do not call the project's actual function.
+  function node(target, x, y, center = false) {
+    const group = addSvg(svg, 'g', {tabindex: 0, role: 'button', 'aria-label': 'Show ' + target.name, style: 'cursor:pointer'});
+    addSvg(group, 'rect', {x, y, width: 280, height: 48, rx: 7, fill: center ? '#123047' : '#edf5fa', stroke: '#9bb8c9'});
+    addSvg(group, 'text', {x: x + 12, y: y + 20, fill: center ? 'white' : '#15283b', 'font-size': 12}, target.name.length > 37 ? target.name.slice(0, 34) + '…' : target.name);
+    addSvg(group, 'text', {x: x + 12, y: y + 37, fill: center ? '#d6e4ef' : '#526679', 'font-size': 10}, target.file + ':' + target.line);
+    // Select the displayed definition through pointer activation.
+    group.addEventListener('click', () => selectFunction(target.id));
+    // Provide equivalent keyboard activation; suppress Space scrolling only when activating.
+    group.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selectFunction(target.id); } });
+  }
+  // Draw incoming arrows from left rows to the selected center node, preserving edge kind.
+  left.forEach((edge, index) => addSvg(svg, 'line', {x1: 290, y1: 44 + index * 64, x2: 340, y2: height / 2, stroke: '#52768b', 'stroke-dasharray': edge.kind === 'reference' ? '5 4' : '', 'marker-end': 'url(#arrow)'}));
+  // Draw outgoing arrows from the center to right rows; this is a source relationship.
+  right.forEach((edge, index) => addSvg(svg, 'line', {x1: 620, y1: height / 2, x2: 670, y2: 44 + index * 64, stroke: '#52768b', 'stroke-dasharray': edge.kind === 'reference' ? '5 4' : '', 'marker-end': 'url(#arrow)'}));
+  // Look up and draw the source of each incoming edge in its corresponding left row.
+  left.forEach((edge, index) => node(byId.get(edge.source), 10, 20 + index * 64));
+  // Look up and draw the destination of each outgoing edge in its corresponding right row.
+  right.forEach((edge, index) => node(byId.get(edge.target), 670, 20 + index * 64));
+  node(item, 340, height / 2 - 24, true);
+  setText('graph-note', 'Showing up to 12 incoming and 12 outgoing edges. Complete relationships are listed below.');
+}
+
+// Select an existing source ID and rebuild its detail, complete relationship buttons and
+// local graph. Incoming/outgoing filtering uses stable IDs, so duplicate names remain distinct.
+// Other call expressions retain targets that are external, dynamic or ambiguous; this page
+// does not infer them. Selection refreshes the list's current-item indicator without clearing
+// search/file filters. Callers supply IDs from the inventory; no missing-ID fallback is provided.
+function selectFunction(id) {
+  selected = id; const item = byId.get(id);
+  setText('name', item.name); setText('location', item.file + ':' + item.line + ' · ' + item.language);
+  setText('description', item.description);
+  // Keep all edges whose destination is this selected definition.
+  const incoming = inventory.edges.filter(edge => edge.target === id);
+  // Keep all edges whose source is this selected definition.
+  const outgoing = inventory.edges.filter(edge => edge.source === id);
+  for (const [name, edges, field] of [['incoming', incoming, 'source'], ['outgoing', outgoing, 'target']]) {
+    const parent = document.getElementById(name); parent.replaceChildren();
+    // Navigate to the opposite endpoint, using source for incoming and target for outgoing.
+    edges.forEach(edge => parent.append(functionButton(byId.get(edge[field]), edge.kind)));
+    if (!edges.length) parent.textContent = 'No resolved source edges.';
+  }
+  // A resolved JS name may be scope-qualified; compare its declared symbol to the bare call.
+  // Select direct-call edges, then project them to the symbol spelled at the call site.
+  const known = new Set(outgoing.filter(edge => edge.kind === 'call').map(edge => byId.get(edge.target).symbol || byId.get(edge.target).name));
+  // Show only expressions without a resolved direct-call destination; references do not count.
+  setText('external', item.calls.filter(name => !known.has(name)).join('\n') || 'None recorded.');
+  drawGraph(item, incoming, outgoing); renderList();
+}
+
+// Populate sorted unique source options. The first callback extracts each path; the second
+// creates/attaches its literal option. Input/change handlers rebuild navigation locally.
+[...new Set(functions.map(item => item.file))].sort().forEach(file => { const option = document.createElement('option'); option.value = file; option.textContent = file; document.getElementById('file').append(option); });
+document.getElementById('search').addEventListener('input', renderList);
+document.getElementById('file').addEventListener('change', renderList);
+renderList();
+// Prefer firmware main as the initial detail; use the first definition if main is absent.
+const initial = functions.find(item => item.file === 'Src/main.c' && item.name === 'main') || functions[0];
+if (initial) selectFunction(initial.id);
+</script>
+</html>

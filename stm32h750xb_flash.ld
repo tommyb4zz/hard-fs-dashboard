@@ -1,3 +1,18 @@
+/**
+ * Assign run/load addresses and export bounds used by assembly startup and libc. Internal flash
+ * starts at 0x08000000/128 KiB; mapped QSPI is 0x90000000/128 MiB. Exclude LVGL/UI archive
+ * text/constants from internal .text/.rodata and place them in .extflash; retain .ui_assets in
+ * QSPI. RAM_D1 contains initialized data, zeroed BSS, libc heap markers and the main stack
+ * bound. Other declared RAM regions are not automatically allocated just because MEMORY lists
+ * them. NOLOAD regions require startup clearing rather than file contents; separate
+ * QSPI/internal binaries must be programmed before mapped UI execution.
+ */
+
+/**
+ * File purpose: Place startup/application code in internal flash, LVGL/UI code and assets
+ * in mapped QSPI, and data/BSS/heap/stack in AXI SRAM; export startup/libc linker symbols.
+ */
+
 /*
 ******************************************************************************
 **

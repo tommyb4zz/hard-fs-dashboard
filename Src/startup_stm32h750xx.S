@@ -1,12 +1,17 @@
 /**
+ * File purpose: Define STM32H750 reset startup, vector entries and weak default interrupt
+ * aliases; initialize stack/data/BSS, run C constructors and call main.
+ */
+
+/**
  ******************************************************************************
  * @brief     STM32H750xx device vector table for GCC toolchain.
  *            This module performs:
  *                - Set the initial SP
  *                - Set the initial PC == Reset_Handler,
  *                - Set the vector table entries with the exceptions ISR address
- *                - Branches to main in the C library (which eventually
- *                  calls main()).
+ *                - Initialize data/BSS, call C library constructors,
+ *                  then call the application main().
  ******************************************************************************
  * @attention
  *
@@ -52,6 +57,16 @@ defined in linker script */
   .section .text.Reset_Handler
   .weak Reset_Handler
   .type Reset_Handler, %function
+/**
+ * Reset entry selected by the vector table; takes no C arguments and never returns normally.
+ * Load the main stack pointer from linker symbol _estack, then call SystemInit before RAM
+ * globals are initialized. Copy word-aligned initialized data from _sidata in flash to the
+ * half-open SRAM range [_sdata, _edata); clear [_sbss, _ebss) with zero words. Those bounds
+ * come from the linker script, not from hard-coded allocation sizes in this routine.
+ * Run __libc_init_array for static initialization, then call main. A main return branches
+ * forever. There is no memory-controller probe, bounds validation or error report here;
+ * this startup is excluded from the desktop runner and requires a correct firmware image.
+ */
 Reset_Handler:
   ldr   r0, =_estack
   mov   sp, r0          /* set stack pointer */
@@ -66,11 +81,13 @@ Reset_Handler:
   b LoopCopyDataInit
 
 CopyDataInit:
+/* Copy the next 32-bit initializer at byte offset r3; both regions are linker-aligned. */
   ldr r4, [r2, r3]
   str r4, [r0, r3]
   adds r3, r3, #4
 
 LoopCopyDataInit:
+/* Stop at the exclusive _edata bound; an empty initialized-data range performs no copy. */
   adds r4, r0, r3
   cmp r4, r1
   bcc CopyDataInit
@@ -82,10 +99,12 @@ LoopCopyDataInit:
   b LoopFillZerobss
 
 FillZerobss:
+/* Store one zero word and advance the destination; no value is loaded from flash. */
   str  r3, [r2]
   adds r2, r2, #4
 
 LoopFillZerobss:
+/* Compare the next destination with the exclusive _ebss bound before writing it. */
   cmp r2, r4
   bcc FillZerobss
 
@@ -95,6 +114,7 @@ LoopFillZerobss:
   bl main
 
 LoopForever:
+/* A firmware main return has no operating system to receive an exit code. */
   b LoopForever
 
   .size Reset_Handler, .-Reset_Handler
@@ -108,6 +128,13 @@ LoopForever:
  * @retval : None
 */
   .section .text.Default_Handler,"ax",%progbits
+/**
+ * Fallback exception/interrupt entry for weak vector aliases without a linked override.
+ * Branch indefinitely to retain the stopped context; no C parameters, status code, device
+ * acknowledgment, diagnostic capture or recovery are supplied. Board/kernel handlers with
+ * matching strong symbols replace these aliases at link time; the vector table itself does
+ * not establish that every named peripheral interrupt is enabled or implemented.
+ */
 Default_Handler:
 Infinite_Loop:
   b Infinite_Loop
@@ -116,8 +143,8 @@ Infinite_Loop:
 /******************************************************************************
 *
 * The STM32H750xx vector table.  Note that the proper constructs
-* must be placed on this to ensure that it ends up at physical address
-* 0x0000.0000.
+* are retained by the linker .isr_vector section at the FLASH origin
+* 0x0800.0000 in stm32h750xb_flash.ld; boot remapping is device-dependent.
 *
 ******************************************************************************/
   .section .isr_vector,"a",%progbits

@@ -1,5 +1,36 @@
 # hard-fs-dashboard
 
+## Function documentation and virtual CAN testing
+
+- [Complete code guide](docs/CODE_GUIDE.md): expanded function contracts, module explanations, startup/build, synthetic tests, UI and BDP connections.
+- [Function flowcharts](docs/FUNCTION_FLOW.md), [function inventory](docs/FUNCTIONS.md), and [interactive function explorer](docs/function-explorer.html).
+- [Virtual CAN scenarios and test commands](docs/CAN_SIMULATION.md).
+- [Editable synthetic dashboard: inputs, rendered timeline and log export](docs/SYNTHETIC_TESTING.md).
+- [Verified virtual environment repositories and hardware scope](docs/VIRTUAL_ENVIRONMENTS.md).
+- [MB1381 BDP review: missing code, required information and implementation locations](docs/BDP_GAP_ANALYSIS.md).
+- [Implementation and test evidence](docs/RESEARCH.md).
+
+Project functions include explanatory comments and script/source files include purpose headers. Upstream `Drivers/` and `lvgl/` implementations retain their dependency documentation. New input testing uses virtual CAN; physical adapter, wiring and vehicle protocol integration remain unimplemented.
+
+From the repository root:
+
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install -r tools/can_sim/requirements.txt -r tools/requirements-dev.txt
+.venv/bin/python -m tools.can_sim --demo --scenario tools/can_sim/scenarios/normal.json
+.venv/bin/python -m tools.dashboard_sim --scenario tools/can_sim/scenarios/user-inputs.json --open
+.venv/bin/python -m unittest discover -s tests -p 'test_*.py' -v
+.venv/bin/python tools/generate_function_docs.py --check
+```
+
+The dashboard command builds a host executable and writes actual LVGL captures, an animated viewer,
+decoded snapshots and validated log exports to `build/dashboard-sim/`. Edit the JSON and rerun to
+change inputs over time. `--open` opens the viewer in your default browser. The original automatic
+firmware demo remains available.
+
+The Python integration tests require CMake and a host Clang/GCC compiler with sanitizer support.
+See [production CAN host tests](tests/can_host/README.md) for the independent C suite.
+
 `hard-fs-dashboard` is an STM32H750B-DK firmware project built with STM32Cube for VS Code, CMake, LVGL, and a SquareLine-generated UI.
 
 The project runs on the Cortex-M7 core and produces:

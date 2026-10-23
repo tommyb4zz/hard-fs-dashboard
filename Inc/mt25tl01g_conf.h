@@ -1,4 +1,17 @@
 /**
+ * Supply QSPI component dummy-cycle settings for standard/quad STR and DTR reads. Most
+ * configured counts are eight clocks; the ordinary DTR read setting is six. These are driver
+ * protocol constants rather than flash capacity or a JEDEC-ID result. Actual fitted-
+ * device/profile compatibility remains a BDP follow-up; inclusion of a legacy component name
+ * alone establishes neither compatibility nor failure.
+ */
+
+/**
+ * File purpose: Configure QSPI read dummy-cycle counts for STR/DTR access through the
+ * MT25TL01G flash component driver.
+ */
+
+/**
   ******************************************************************************
   * @file    mt25tl01g_conf_template.h
   * @author  MCD Application Team

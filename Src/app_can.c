@@ -1,3 +1,10 @@
+/**
+ * File purpose: Configure the board classic-CAN controller, issue the ten implemented diagnostic
+ * PID requests, validate/decode replies into integer-scaled dashboard state, and accumulate
+ * lifetime current/power statistics. All module state is private and assumes serialized
+ * application polling; the host reuses this logic behind HAL fakes. Vehicle
+ * schema/freshness and controller recovery policies are not supplied here.
+ */
 #include "app_can.h"
 
 #include <stdio.h>
@@ -7,6 +14,8 @@
 
 static FDCAN_HandleTypeDef app_hfdcan;
 static bool app_can_initialized = false;
+/* Existing implemented diagnostic contract: standard identifiers, 0x22 request/0x62 reply.
+ * These are software constants, not verified requirements for the future vehicle bus. */
 #define APP_CAN_ORION_REQUEST_ID 0x7E3U
 #define APP_CAN_ORION_RESPONSE_ID 0x7EBU
 #define APP_CAN_OBD2_MODE_READ_DATA_BY_IDENTIFIER 0x22U
@@ -25,7 +34,10 @@ static bool app_can_initialized = false;
 
 #define APP_CAN_REQUEST_PERIOD_MS 50U
 #define APP_CAN_REQUEST_TIMEOUT_MS 100U
+/* HAL copies payload bytes before application validation; the largest DLC represents 64 bytes. */
+#define APP_CAN_MAX_RX_PAYLOAD_BYTES 64U
 
+/* Round-robin order: voltage, summed voltage, current, SOC, three temperatures, three cells. */
 typedef enum {
   APP_CAN_REQUEST_PACK_VOLTAGE = 0,
   APP_CAN_REQUEST_PACK_SUMMED_VOLTAGE,
@@ -40,6 +52,7 @@ typedef enum {
   APP_CAN_REQUEST_COUNT
 } app_can_request_index_t;
 
+/* Expected PCI is bytes after the PCI: service + two PID bytes + one/two measurement bytes. */
 typedef struct {
   uint16_t pid;
   uint8_t expected_obd_length;
@@ -98,6 +111,8 @@ static const app_can_request_definition_t app_can_request_table[APP_CAN_REQUEST_
         },
 };
 
+/* Retained state starts at zero and has no per-field validity/age. A pending PID tracks
+ * scheduler progress only; accepted unsolicited replies may still change measurements. */
 static app_can_dashboard_data_t app_can_latest_data = {0};
 static app_can_request_index_t app_can_next_request = APP_CAN_REQUEST_PACK_VOLTAGE;
 static uint16_t app_can_pending_pid = 0U;
@@ -122,6 +137,13 @@ static int16_t app_can_decode_orion_current_deci_amps(uint16_t raw_value);
 static void app_can_update_current_stats(app_can_dashboard_data_t *data);
 static void app_can_update_power_stats(app_can_dashboard_data_t *data);
 
+/**
+ * Report the failing initialization stage when debug output is enabled and return false.
+ *
+ * stage names the failed setup operation. The return is always false so initialization
+ * callers can propagate failure directly; printing also reads the handle error code. It
+ * does not reset hardware or clear previously decoded data.
+ */
 static bool app_can_log_init_failure(const char *stage) {
   if (app_can_debug_enabled && (stage != NULL)) {
     printf("[can] init failed stage=%s fdcan_error=0x%08lX\r\n",
@@ -132,10 +154,25 @@ static bool app_can_log_init_failure(const char *stage) {
   return false;
 }
 
+/**
+ * Return an absolute value for the signed int16-range values passed by the debug
+ * formatter.
+ *
+ * The result is a signed 32-bit magnitude used only for decimal formatting. Callers widen
+ * int16_t first, including -32768; the helper itself does not guard a general INT32_MIN
+ * input and has no state changes.
+ */
 static int32_t app_can_abs_int32(int32_t value) {
   return (value < 0) ? -value : value;
 }
 
+/**
+ * Saturate a wide signed result to the dashboard signed 16-bit storage range.
+ *
+ * Accept a signed 64-bit arithmetic result and return INT16_MIN/INT16_MAX at the limits,
+ * otherwise cast exactly. This bounds stored current means and power values without
+ * changing any accumulator.
+ */
 static int16_t app_can_clamp_int64_to_int16(int64_t value) {
   if (value > INT16_MAX) {
     return INT16_MAX;
@@ -148,6 +185,13 @@ static int16_t app_can_clamp_int64_to_int16(int64_t value) {
   return (int16_t)value;
 }
 
+/**
+ * Print a labeled decivolt value with one decimal digit; ignore a null label.
+ *
+ * One input count means 0.1 V. Integer quotient and remainder produce a decimal V suffix
+ * without floating point; output has a leading space and no trailing newline. The snapshot
+ * is unchanged.
+ */
 static void app_can_print_unsigned_deci_volts(const char *label, uint16_t deci_volts) {
   if (label == NULL) {
     return;
@@ -156,6 +200,13 @@ static void app_can_print_unsigned_deci_volts(const char *label, uint16_t deci_v
   printf(" %s=%u.%uV", label, (unsigned int)(deci_volts / 10U), (unsigned int)(deci_volts % 10U));
 }
 
+/**
+ * Print a labeled cell-voltage value in 100-microvolt units with four decimal digits.
+ *
+ * One input count means 0.0001 V. Divide by 10000 and zero-pad the remainder to four
+ * digits; a null label produces no output. This is formatting only and does not validate
+ * the measured range.
+ */
 static void app_can_print_unsigned_100uv_volts(const char *label, uint16_t voltage_100uv) {
   if (label == NULL) {
     return;
@@ -167,6 +218,13 @@ static void app_can_print_unsigned_100uv_volts(const char *label, uint16_t volta
          (unsigned int)(voltage_100uv % 10000U));
 }
 
+/**
+ * Print signed deciamps as a labeled amperage with one decimal digit.
+ *
+ * One input count means 0.1 A. Widen before taking magnitude, preserve the sign
+ * separately, and print whole/fractional parts with A; null label returns before output.
+ * No statistics or sample fields change.
+ */
 static void app_can_print_signed_deci_amps(const char *label, int16_t deci_amps) {
   int32_t abs_deci_amps = 0;
 
@@ -182,6 +240,13 @@ static void app_can_print_signed_deci_amps(const char *label, int16_t deci_amps)
          (long)(abs_deci_amps % 10));
 }
 
+/**
+ * Prefer nonzero pack voltage, otherwise summed pack voltage; return zero for null data.
+ *
+ * The pointer is a retained CAN snapshot; return units remain 0.1 V. Zero is treated as a
+ * fallback trigger rather than as validity metadata. Neither source has an age check, and
+ * this function writes no state.
+ */
 static uint16_t app_can_get_display_voltage_deci_volts(const app_can_dashboard_data_t *data) {
   if (data == NULL) {
     return 0U;
@@ -194,6 +259,13 @@ static uint16_t app_can_get_display_voltage_deci_volts(const app_can_dashboard_d
   return data->pack_summed_voltage_deci_volts;
 }
 
+/**
+ * Convert deciamps times decivolts to integer kW, rounding half values away from zero.
+ *
+ * Both inputs are integer-scaled samples: current in 0.1 A and voltage in 0.1 V. A 64-bit
+ * product avoids intermediate overflow; division by 100000 converts to kW and the returned
+ * int16_t saturates if needed. This computes instantaneous power, not integrated energy.
+ */
 static int16_t app_can_compute_power_kw(int16_t current_deci_amps, uint16_t voltage_deci_volts) {
   int64_t numerator = (int64_t)current_deci_amps * (int64_t)voltage_deci_volts;
 
@@ -207,6 +279,13 @@ static int16_t app_can_compute_power_kw(int16_t current_deci_amps, uint16_t volt
   return app_can_clamp_int64_to_int16((numerator - 50000) / 100000);
 }
 
+/**
+ * Print a labeled signed integer when a label is supplied.
+ *
+ * value is printed in signed decimal without a units suffix or newline. The debug caller
+ * supplies the meaning through label; null label is a no-op and all measurement/statistics
+ * state remains unchanged.
+ */
 static void app_can_print_signed_integer(const char *label, int16_t value) {
   if (label == NULL) {
     return;
@@ -215,6 +294,13 @@ static void app_can_print_signed_integer(const char *label, int16_t value) {
   printf(" %s=%d", label, (int)value);
 }
 
+/**
+ * Log a PID submitted for transmission only when CAN debug output is enabled.
+ *
+ * pid is the 16-bit identifier just accepted by the HAL TX queue, printed in hexadecimal.
+ * This message does not establish delivery or a CAN acknowledgement; no pending-request
+ * fields are changed here.
+ */
 static void app_can_debug_log_request(uint16_t pid) {
   if (!app_can_debug_enabled) {
     return;
@@ -222,6 +308,13 @@ static void app_can_debug_log_request(uint16_t pid) {
   printf("[can] tx pid=0x%04X\r\n", pid);
 }
 
+/**
+ * Log an outstanding PID that exceeded its timeout when CAN debug output is enabled.
+ *
+ * pid is the scheduler identifier whose elapsed request age exceeded the configured
+ * timeout. This helper only emits text; the polling caller clears pending state and
+ * advances the sequence.
+ */
 static void app_can_debug_log_timeout(uint16_t pid) {
   if (!app_can_debug_enabled) {
     return;
@@ -229,6 +322,15 @@ static void app_can_debug_log_timeout(uint16_t pid) {
   printf("[can] timeout pid=0x%04X\r\n", pid);
 }
 
+/**
+ * Log a validated eight-byte reply and its decoded measurement/statistics when debug is
+ * enabled.
+ *
+ * rx_data must address eight already-validated bytes and data must point to the post-
+ * decode snapshot. Select the matching PID field, add current/power statistics for current
+ * replies, and print fault_flags. Null pointers or disabled debugging produce no output;
+ * neither input is mutated.
+ */
 static void app_can_debug_log_response(uint16_t pid,
                                        const uint8_t *rx_data,
                                        const app_can_dashboard_data_t *data) {
@@ -305,6 +407,13 @@ static void app_can_debug_log_response(uint16_t pid,
   printf(" flags=0x%02X\r\n", data->fault_flags);
 }
 
+/**
+ * Enable one supported GPIO A-I peripheral clock, returning false for another port.
+ *
+ * port is a HAL GPIO register pointer. The A through I pointer comparisons select exactly
+ * one RCC clock-enable macro; success means a supported port was selected, not a pin or
+ * transceiver test. No HAL error result is available from these macros.
+ */
 static bool app_can_enable_gpio_clock(GPIO_TypeDef *port) {
   if (port == GPIOA) {
     __HAL_RCC_GPIOA_CLK_ENABLE();
@@ -346,14 +455,34 @@ static bool app_can_enable_gpio_clock(GPIO_TypeDef *port) {
   return false;
 }
 
+/**
+ * Enable or disable CAN initialization, request, response and timeout serial diagnostics.
+ *
+ * enabled replaces the module-wide boolean consulted by initialization, TX, RX and timeout
+ * printers. It has no return value and does not stop CAN requests or protect against
+ * concurrent console output.
+ */
 void app_can_set_debug_enabled(bool enabled) {
   app_can_debug_enabled = enabled;
 }
 
+/**
+ * Return the current CAN diagnostic-output setting.
+ *
+ * Return the module-wide debug boolean without side effects. DEBUG builds start with true,
+ * other builds false; later calls to the setter override that default.
+ */
 bool app_can_is_debug_enabled(void) {
   return app_can_debug_enabled;
 }
 
+/**
+ * Accept only a nonnull configuration selecting the implemented classic CAN mode.
+ *
+ * Only mode is examined after the null guard: APP_CAN_MODE_FD is declared in the interface
+ * but not implemented here. Instance validity, pins and electrical compatibility are not
+ * checked by this predicate.
+ */
 static bool app_can_config_is_supported(const app_can_config_t *config) {
   if (config == NULL) {
     return false;
@@ -362,6 +491,13 @@ static bool app_can_config_is_supported(const app_can_config_t *config) {
   return config->mode == APP_CAN_MODE_CLASSIC;
 }
 
+/**
+ * Limit a decoded unsigned state-of-charge percentage to 100.
+ *
+ * value is an unsigned integer percent after the SOC decoder conversion. Values 0 through
+ * 100 pass through; larger values return 100. It neither reports invalid raw data nor
+ * attaches a validity flag.
+ */
 static uint8_t app_can_clamp_percentage(uint8_t value) {
   if (value > 100U) {
     return 100U;
@@ -370,6 +506,14 @@ static uint8_t app_can_clamp_percentage(uint8_t value) {
   return value;
 }
 
+/**
+ * Subtract the implemented 32767 raw-current offset and saturate to signed deciamps.
+ *
+ * The existing protocol interprets the big-endian raw 16-bit word as an offset-binary
+ * number with zero at 32767. Return units are 0.1 A; raw 65535 would produce 32768 and is
+ * therefore clipped to 32767. This is the implemented encoding, not confirmation of a
+ * future BMS protocol.
+ */
 static int16_t app_can_decode_orion_current_deci_amps(uint16_t raw_value) {
   int32_t current_deci_amps = (int32_t)raw_value - 32767;
 
@@ -384,6 +528,14 @@ static int16_t app_can_decode_orion_current_deci_amps(uint16_t raw_value) {
   return (int16_t)current_deci_amps;
 }
 
+/**
+ * Accumulate accepted current samples into signed min/max and nearest-integer mean values.
+ *
+ * data must contain the newly decoded current in 0.1 A. The first sample seeds persistent
+ * min/max/sum/count; subsequent samples update them and write rounded signed mean/min/max
+ * back into the snapshot. Every accepted current reply counts, including duplicates; there
+ * is no time window, session reset or count-overflow handling in this helper.
+ */
 static void app_can_update_current_stats(app_can_dashboard_data_t *data) {
   int64_t average_deci_amps = 0;
 
@@ -424,6 +576,14 @@ static void app_can_update_current_stats(app_can_dashboard_data_t *data) {
   data->average_pack_current_deci_amps = app_can_clamp_int64_to_int16(average_deci_amps);
 }
 
+/**
+ * Accumulate integer-kW min/max/mean at current-sample time when pack voltage is nonzero.
+ *
+ * Use retained nonzero pack voltage, or summed voltage, with the newly decoded current.
+ * Round each power sample to integer kW before maintaining persistent min/max/sum/count
+ * and writing the rounded mean. Null data or zero selected voltage leave statistics
+ * unchanged. Sampling has no freshness pairing or time integration.
+ */
 static void app_can_update_power_stats(app_can_dashboard_data_t *data) {
   uint16_t voltage_deci_volts = 0U;
   int16_t power_kw = 0;
@@ -473,15 +633,36 @@ static void app_can_update_power_stats(app_can_dashboard_data_t *data) {
   data->average_pack_power_kw = app_can_clamp_int64_to_int16(average_power_kw);
 }
 
+/**
+ * Return the PID at the current position in the ten-request round-robin table.
+ *
+ * The private index must remain in the request-table range. Return the table PID without
+ * advancing it or changing pending state; initialization and the advance helper establish
+ * that invariant.
+ */
 static uint16_t app_can_get_next_request_pid(void) {
   return app_can_request_table[app_can_next_request].pid;
 }
 
+/**
+ * Advance the ten-request round-robin position and wrap from the final PID to the first.
+ *
+ * Increment the private request enum modulo APP_CAN_REQUEST_COUNT. The polling caller
+ * invokes this only on timeout or a reply matching the pending PID; sending a request does
+ * not advance it.
+ */
 static void app_can_advance_request_sequence(void) {
   app_can_next_request =
       (app_can_request_index_t)((app_can_next_request + 1U) % APP_CAN_REQUEST_COUNT);
 }
 
+/**
+ * Translate a HAL DLC constant to its payload-byte count; unknown constants map to zero.
+ *
+ * data_length_code uses HAL-encoded DLC constants, not a byte count. Mapping includes
+ * legal FD lengths up to 64 so the receiver can reject them after HAL has copied into the
+ * 64-byte scratch buffer. This conversion does not itself accept a frame.
+ */
 static uint8_t app_can_dlc_to_bytes(uint32_t data_length_code) {
   switch (data_length_code) {
   case FDCAN_DLC_BYTES_0:
@@ -521,6 +702,15 @@ static uint8_t app_can_dlc_to_bytes(uint32_t data_length_code) {
   }
 }
 
+/**
+ * Submit one padded classic eight-byte service-0x22 request when initialized and TX space
+ * exists.
+ *
+ * pid becomes big-endian bytes 2 and 3 after PCI 0x03 and service 0x22; remaining bytes
+ * are zero padding. TX uses standard ID 0x7E3, eight-byte classic data format and no BRS.
+ * Return false before enqueue if uninitialized or FIFO full, or after a HAL enqueue
+ * failure. Success only enqueues; polling records pending PID/time afterward.
+ */
 static bool app_can_send_pid_request(uint16_t pid) {
   FDCAN_TxHeaderTypeDef tx_header = {0};
   uint8_t tx_data[8] = {0};
@@ -551,6 +741,36 @@ static bool app_can_send_pid_request(uint16_t pid) {
   return HAL_FDCAN_AddMessageToTxFifoQ(&app_hfdcan, &tx_header, tx_data) == HAL_OK;
 }
 
+/**
+ * Accept only the table's exact ISO-TP single-frame length; larger PCI values include
+ * other frame types.
+ *
+ * pid selects a table entry and pci_length is the complete first payload byte. Equality
+ * with 4 or 5 enforces the implemented single-frame form and excludes multi-frame PCI
+ * values. Unknown PID returns false; no data or scheduler state changes.
+ */
+static bool app_can_response_length_is_valid(uint16_t pid, uint8_t pci_length) {
+  for (uint32_t index = 0U; index < APP_CAN_REQUEST_COUNT; index++) {
+    if (app_can_request_table[index].pid == pid) {
+      return pci_length == app_can_request_table[index].expected_obd_length;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Validate standard classic data-frame metadata and exact single-frame length, then decode
+ * a known PID.
+ *
+ * Require nonnull pointers, standard classic data ID 0x7EB, exactly eight payload bytes,
+ * service 0x62 and the known PID-specific PCI. Reconstruct 16-bit values big-endian;
+ * summed voltage rounds raw hundredths of volts into decivolts, current subtracts 32767,
+ * SOC halves/rounds/clamps, temperatures cast to signed Celsius, and cell values retain
+ * 100-microvolt units. A valid current reply also mutates module statistics. Other
+ * failures return false without updating the supplied snapshot. Matching a pending request
+ * is not required; fault_flags is not decoded.
+ */
 static bool app_can_decode_orion_response(const FDCAN_RxHeaderTypeDef *rx_header,
                                           const uint8_t *rx_data,
                                           app_can_dashboard_data_t *data) {
@@ -561,11 +781,13 @@ static bool app_can_decode_orion_response(const FDCAN_RxHeaderTypeDef *rx_header
     return false;
   }
 
-  if (rx_header->Identifier != APP_CAN_ORION_RESPONSE_ID) {
+  if ((rx_header->Identifier != APP_CAN_ORION_RESPONSE_ID) ||
+      (rx_header->IdType != FDCAN_STANDARD_ID) || (rx_header->RxFrameType != FDCAN_DATA_FRAME) ||
+      (rx_header->FDFormat != FDCAN_CLASSIC_CAN)) {
     return false;
   }
 
-  if (app_can_dlc_to_bytes(rx_header->DataLength) < 8U) {
+  if (app_can_dlc_to_bytes(rx_header->DataLength) != 8U) {
     return false;
   }
 
@@ -574,28 +796,22 @@ static bool app_can_decode_orion_response(const FDCAN_RxHeaderTypeDef *rx_header
   }
 
   pid = ((uint16_t)rx_data[2] << 8U) | (uint16_t)rx_data[3];
+  if (!app_can_response_length_is_valid(pid, rx_data[0])) {
+    return false;
+  }
 
   switch (pid) {
   case APP_CAN_PID_PACK_VOLTAGE:
-    if (rx_data[0] < 5U) {
-      return false;
-    }
     raw_value = ((uint16_t)rx_data[4] << 8U) | (uint16_t)rx_data[5];
     data->pack_voltage_deci_volts = raw_value;
     return true;
 
   case APP_CAN_PID_PACK_SUMMED_VOLTAGE:
-    if (rx_data[0] < 5U) {
-      return false;
-    }
     raw_value = ((uint16_t)rx_data[4] << 8U) | (uint16_t)rx_data[5];
     data->pack_summed_voltage_deci_volts = (uint16_t)((raw_value + 5U) / 10U);
     return true;
 
   case APP_CAN_PID_PACK_CURRENT:
-    if (rx_data[0] < 5U) {
-      return false;
-    }
     raw_value = ((uint16_t)rx_data[4] << 8U) | (uint16_t)rx_data[5];
     data->pack_current_deci_amps = app_can_decode_orion_current_deci_amps(raw_value);
     app_can_update_current_stats(data);
@@ -603,51 +819,30 @@ static bool app_can_decode_orion_response(const FDCAN_RxHeaderTypeDef *rx_header
     return true;
 
   case APP_CAN_PID_PACK_SOC:
-    if (rx_data[0] < 4U) {
-      return false;
-    }
     data->pack_state_of_charge = app_can_clamp_percentage((uint8_t)((rx_data[4] + 1U) / 2U));
     return true;
 
   case APP_CAN_PID_HIGHEST_TEMPERATURE:
-    if (rx_data[0] < 4U) {
-      return false;
-    }
     data->highest_temperature_c = (int8_t)rx_data[4];
     return true;
 
   case APP_CAN_PID_LOWEST_TEMPERATURE:
-    if (rx_data[0] < 4U) {
-      return false;
-    }
     data->lowest_temperature_c = (int8_t)rx_data[4];
     return true;
 
   case APP_CAN_PID_AVERAGE_TEMPERATURE:
-    if (rx_data[0] < 4U) {
-      return false;
-    }
     data->average_temperature_c = (int8_t)rx_data[4];
     return true;
 
   case APP_CAN_PID_LOWEST_CELL_VOLTAGE:
-    if (rx_data[0] < 5U) {
-      return false;
-    }
     data->lowest_cell_voltage_100uv = ((uint16_t)rx_data[4] << 8U) | (uint16_t)rx_data[5];
     return true;
 
   case APP_CAN_PID_HIGHEST_CELL_VOLTAGE:
-    if (rx_data[0] < 5U) {
-      return false;
-    }
     data->highest_cell_voltage_100uv = ((uint16_t)rx_data[4] << 8U) | (uint16_t)rx_data[5];
     return true;
 
   case APP_CAN_PID_AVERAGE_CELL_VOLTAGE:
-    if (rx_data[0] < 5U) {
-      return false;
-    }
     data->average_cell_voltage_100uv = ((uint16_t)rx_data[4] << 8U) | (uint16_t)rx_data[5];
     return true;
 
@@ -656,6 +851,15 @@ static bool app_can_decode_orion_response(const FDCAN_RxHeaderTypeDef *rx_header
   }
 }
 
+/**
+ * Publish a successfully validated reply to the latest dashboard snapshot and optionally
+ * log it.
+ *
+ * Start from a copy of the retained snapshot so fields outside this PID survive. A
+ * successful decoder call publishes the whole updated copy and prints it; false leaves the
+ * retained snapshot untouched. It does not compare the reply PID to pending state; polling
+ * performs that separate sequence operation.
+ */
 static bool app_can_handle_rx_message(const FDCAN_RxHeaderTypeDef *rx_header,
                                       const uint8_t *rx_data) {
   app_can_dashboard_data_t next_data = app_can_latest_data;
@@ -671,6 +875,17 @@ static bool app_can_handle_rx_message(const FDCAN_RxHeaderTypeDef *rx_header,
   return true;
 }
 
+/**
+ * Initialize FDCAN using the board configuration and response-ID filter; report failures
+ * for caller retry.
+ *
+ * With no arguments, return true immediately if already initialized. Select HSE, normal
+ * classic mode and automatic retransmission; allocate one exact-ID standard filter, eight
+ * RX FIFO0 slots and one TX FIFO slot. Clock/init/filter/start failures return false for
+ * task retry. Only full success marks ready and resets request position/pending/time;
+ * existing measurement/statistics storage is not cleared. At the configured 25 MHz HSE,
+ * prescaler 5 with 1+8+1 time quanta calculates 500 kbit/s.
+ */
 bool app_can_init(void) {
   const app_can_config_t *config = app_can_config_get();
   FDCAN_FilterTypeDef filter = {0};
@@ -761,9 +976,23 @@ bool app_can_init(void) {
   return true;
 }
 
+/**
+ * Expire overdue requests, drain valid replies, and send the next PID every 50 ms when
+ * idle. Copy the latest snapshot only after a valid reply; unsigned elapsed-time
+ * arithmetic supports tick rollover.
+ *
+ * data is caller storage for a full snapshot and is written only if at least one reply is
+ * accepted. Capture HAL milliseconds once; expire pending requests only when unsigned
+ * elapsed time is strictly greater than 100 ms, then drain FIFO0 until empty or HAL read
+ * failure. Valid unsolicited/duplicate replies still update measurements, while only a
+ * matching PID clears pending and advances. When idle and elapsed time is at least 50 ms,
+ * enqueue the next request and record its time on success. Return false for
+ * null/uninitialized input or no accepted reply; no battery-staleness transition is
+ * produced.
+ */
 bool app_can_poll_dashboard_data(app_can_dashboard_data_t *data) {
   FDCAN_RxHeaderTypeDef rx_header = {0};
-  uint8_t rx_data[8] = {0};
+  uint8_t rx_data[APP_CAN_MAX_RX_PAYLOAD_BYTES] = {0};
   bool updated = false;
   uint32_t now = HAL_GetTick();
   uint16_t request_pid = 0U;
@@ -812,6 +1041,15 @@ bool app_can_poll_dashboard_data(app_can_dashboard_data_t *data) {
   return false;
 }
 
+/**
+ * Configure clocks and RX/TX alternate-function pins only for the configured FDCAN
+ * instance.
+ *
+ * The HAL callback handle must match the immutable configured instance. Unsupported/null
+ * inputs return silently; supported port clocks are enabled before AF push-pull, no-pull,
+ * very-high-speed RX and TX pins are configured independently. FDCAN1 additionally enables
+ * its RCC clock. This function does not configure bus timing or test physical routing.
+ */
 void HAL_FDCAN_MspInit(FDCAN_HandleTypeDef *hfdcan) {
   GPIO_InitTypeDef gpio = {0};
   const app_can_config_t *config = app_can_config_get();
@@ -841,6 +1079,15 @@ void HAL_FDCAN_MspInit(FDCAN_HandleTypeDef *hfdcan) {
   HAL_GPIO_Init(config->tx_pin.port, &gpio);
 }
 
+/**
+ * Release RX/TX pins and the FDCAN1 clock only when the handle matches the board
+ * configuration.
+ *
+ * For a matching nonnull handle/configuration, deinitialize both configured GPIO pins,
+ * then disable the clock for FDCAN1. Other handles return without changes. It does not
+ * clear app_can_initialized or retained measurements and is a HAL resource callback, not
+ * the application shutdown API.
+ */
 void HAL_FDCAN_MspDeInit(FDCAN_HandleTypeDef *hfdcan) {
   const app_can_config_t *config = app_can_config_get();
 

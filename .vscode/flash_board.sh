@@ -1,4 +1,12 @@
 #!/bin/sh
+# Purpose: Locate STM32CubeProgrammer and the board QSPI loader, verify both firmware images
+# exist, flash/verify external QSPI first, then flash/verify internal flash and reset the
+# target.
+# Environment overrides below select build artifacts, connection and loader. set -eu
+# stops on failed commands/unset variables; discovery helpers only inspect paths.
+# The final programmer invocations change physical flash. This script is not part of
+# synthetic simulation and is not run by the documentation or host test commands.
+
 
 set -eu
 
@@ -15,6 +23,10 @@ CONNECT_PORT=${CONNECT_PORT:-SWD}
 CONNECT_MODE=${CONNECT_MODE:-UR}
 LOADER_NAME=${LOADER_NAME:-MT25TL01G_STM32H750B-DISCO.stldr}
 
+# Print the first executable STM32CubeProgrammer CLI found from the explicit override, PATH or
+# known installation locations; return 1 when no candidate is available. Takes no positional
+# arguments. Checks override executability before PATH and bundle candidates; it prints only
+# the chosen path on stdout and does not launch the programmer or inspect a connected board.
 find_programmer() {
     if [ -n "${STM32_PROGRAMMER_CLI:-}" ] && [ -x "${STM32_PROGRAMMER_CLI}" ]; then
         printf '%s\n' "${STM32_PROGRAMMER_CLI}"
@@ -40,6 +52,10 @@ find_programmer() {
     return 1
 }
 
+# Print the first existing board external-loader file found from the explicit override or
+# installation paths beside the programmer supplied as argument 1; return 1 if none exists.
+# Uses LOADER_NAME/STM32_EXTERNAL_LOADER overrides and checks file presence, not compatibility
+# with a fitted QSPI device. stdout is consumed by the caller's command substitution.
 find_loader() {
     if [ -n "${STM32_EXTERNAL_LOADER:-}" ] && [ -f "${STM32_EXTERNAL_LOADER}" ]; then
         printf '%s\n' "${STM32_EXTERNAL_LOADER}"

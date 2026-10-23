@@ -1,3 +1,15 @@
+/**
+ * Share HAL/BSP types, board GPIO aliases and fatal-error declarations for firmware sources.
+ * Pin macros describe the selected board profile; they do not configure GPIO hardware when this
+ * header is included. Error_Handler is implemented in main.c. The retained HAL_TIM_MspPostInit
+ * declaration does not establish an active timer implementation in this build.
+ */
+
+/**
+ * File purpose: Share STM32 HAL/BSP includes, board GPIO definitions and application
+ * fatal-error declarations; retain the Cube timer-post-init declaration.
+ */
+
 /* USER CODE BEGIN Header */
 /**
   ******************************************************************************
@@ -51,9 +63,22 @@ extern "C" {
 
 /* USER CODE END EM */
 
+/**
+ * Retained Cube timer post-initialization declaration; the project example definition is
+ * commented out, so this declaration has no active implementation in
+ * Src/stm32h7xx_hal_msp.c.
+ */
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 
 /* Exported functions prototypes ---------------------------------------------*/
+/**
+ * Terminate normal application progress after a fatal initialization/runtime error. No input,
+ * status code or recovery is provided.
+ *
+ * Disable maskable interrupts and execute NOP forever. This preserves a halted state for
+ * debugger inspection but does not save fault registers, export logs, reset the MCU or define a
+ * physical safe-output policy. Callers cannot continue after this function.
+ */
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */

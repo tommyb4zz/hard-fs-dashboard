@@ -1,3 +1,12 @@
+# Select a Generic ARM cross-compilation target and arm-none-eabi compiler/archive/objcopy/size
+# tools from PATH. CMSIS_Dcore, CMSIS_Dfpu and other preset fields choose instruction-
+# set/FPU/endian flags; this project's presets select Cortex-M7, double-precision FPU and little
+# endian. Try-compiles build static libraries so configuration does not execute firmware.
+# Compiler discovery/build success is separate from physical programming and board compatibility.
+
+# Purpose: Configure the arm-none-eabi GNU cross compiler and binary tools, deriving
+# CPU/FPU/endian/security flags from the CMSIS target configuration.
+
 # -----------------------------------------------------------------------------
 # @author    STM32Cube bundle system
 # -----------------------------------------------------------------------------

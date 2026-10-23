@@ -1,0 +1,2 @@
+# Purpose: pin the virtual CAN transport used by tools.can_sim and its bus tests.
+python-can==4.6.1
