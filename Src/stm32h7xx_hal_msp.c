@@ -1,3 +1,11 @@
+<<<<<<< HEAD
+=======
+/**
+ * File purpose: Provide the active HAL global MSP hook, enabling SYSCFG. The retained
+ * peripheral-specific initialization/deinitialization examples below are commented out.
+ */
+
+>>>>>>> yousef-dashboard
 /* USER CODE BEGIN Header */
 /**
  ******************************************************************************
@@ -58,10 +66,29 @@
 
 /* USER CODE END 0 */
 
+<<<<<<< HEAD
+=======
+/**
+ * Retained Cube timer post-initialization declaration; the project example definition is
+ * commented out, so this declaration has no active implementation in
+ * Src/stm32h7xx_hal_msp.c.
+ */
+>>>>>>> yousef-dashboard
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 /**
  * Initializes the Global MSP.
  */
+<<<<<<< HEAD
+=======
+/**
+ * Global MCU-support hook invoked by HAL initialization. Enable the SYSCFG peripheral clock and
+ * return; no arguments or error status are used.
+ *
+ * This active function does not initialize CAN, UART, LTDC or DMA pins. Those resources are
+ * configured by the application/BSP routines; the numerous peripheral examples retained below
+ * this hook are line-commented and do not execute.
+ */
+>>>>>>> yousef-dashboard
 void HAL_MspInit(void) {
   /* USER CODE BEGIN MspInit 0 */
 

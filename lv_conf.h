@@ -1,4 +1,22 @@
 /**
+<<<<<<< HEAD
+=======
+ * Project configuration role: Select LVGL's color, memory, tick, drawing, object/widget,
+ * font and optional-feature implementations at compile time. Firmware and desktop UI
+ * builds include this same file so widget output follows the same enabled LVGL features.
+ * RGB565 color settings affect the quantized colors seen in captured host images; draw
+ * buffer addresses/flush callbacks belong to each display port rather than this config.
+ * Existing option comments below describe each switch. Enabling a widget/font only compiles
+ * support; it does not create screen objects or prove hardware display initialization.
+ */
+
+/**
+ * File purpose: Configure LVGL feature switches, display color format, allocation,
+ * assertions, fonts and widgets for this firmware build.
+ */
+
+/**
+>>>>>>> yousef-dashboard
  * @file lv_conf.h
  * Configuration file for v8.1.1-dev
  */

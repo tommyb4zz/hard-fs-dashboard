@@ -52,6 +52,7 @@
                 "reveal": "always",
                 "panel": "shared",
                 "clear": true
+<<<<<<< HEAD
             },
             "windows": {
                 "command": "powershell",
@@ -62,6 +63,8 @@
                     "-File",
                     "${workspaceFolder}/.vscode/flash_board.ps1"
                 ]
+=======
+>>>>>>> yousef-dashboard
             }
         },
         {

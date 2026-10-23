@@ -1,0 +1,1111 @@
+flowchart LR
+  subgraph s0[".vscode/flash_board.sh"]
+    f0["find_programmer :30"]
+    f1["find_loader :59"]
+  end
+  subgraph s1["CMakeLists.txt"]
+    f2["configure_embedded_library :154"]
+  end
+  subgraph s2["Src/Lvgl_Porting/lvgl_port_lcd.c"]
+    f3["lcd_error :33"]
+    f4["lcd_panel_prepare :45"]
+    f5["lcd_panel_power_on :78"]
+    f6["lcd_backlight_on :93"]
+    f7["lcd_ltdc_msp_init :107"]
+    f8["lcd_ltdc_init :163"]
+    f9["disp_flush :221"]
+    f10["LCD_init :244"]
+  end
+  subgraph s3["Src/Lvgl_Porting/lvgl_port_touchpad.c"]
+    f11["touchpad_read :32"]
+    f12["touchpad_init :61"]
+  end
+  subgraph s4["Src/app_can.c"]
+    f13["app_can_log_init_failure :147"]
+    f14["app_can_abs_int32 :165"]
+    f15["app_can_clamp_int64_to_int16 :176"]
+    f16["app_can_print_unsigned_deci_volts :195"]
+    f17["app_can_print_unsigned_100uv_volts :210"]
+    f18["app_can_print_signed_deci_amps :228"]
+    f19["app_can_get_display_voltage_deci_volts :250"]
+    f20["app_can_compute_power_kw :269"]
+    f21["app_can_print_signed_integer :289"]
+    f22["app_can_debug_log_request :304"]
+    f23["app_can_debug_log_timeout :318"]
+    f24["app_can_debug_log_response :334"]
+    f25["app_can_enable_gpio_clock :417"]
+    f26["app_can_set_debug_enabled :465"]
+    f27["app_can_is_debug_enabled :475"]
+    f28["app_can_config_is_supported :486"]
+    f29["app_can_clamp_percentage :501"]
+    f30["app_can_decode_orion_current_deci_amps :517"]
+    f31["app_can_update_current_stats :539"]
+    f32["app_can_update_power_stats :587"]
+    f33["app_can_get_next_request_pid :643"]
+    f34["app_can_advance_request_sequence :654"]
+    f35["app_can_dlc_to_bytes :666"]
+    f36["app_can_send_pid_request :714"]
+    f37["app_can_response_length_is_valid :752"]
+    f38["app_can_decode_orion_response :774"]
+    f39["app_can_handle_rx_message :863"]
+    f40["app_can_init :889"]
+    f41["app_can_poll_dashboard_data :993"]
+    f42["HAL_FDCAN_MspInit :1053"]
+    f43["HAL_FDCAN_MspDeInit :1091"]
+  end
+  subgraph s5["Src/app_can_config.c"]
+    f44["app_can_config_get :38"]
+  end
+  subgraph s6["Src/app_dashboard_ui.c"]
+    f45["app_ui_abs_int32 :30"]
+    f46["app_ui_slider_from_temperature :42"]
+    f47["app_ui_slider_from_current :63"]
+    f48["app_ui_set_voltage_mv_label :85"]
+    f49["app_ui_set_signed_integer_label :103"]
+    f50["app_ui_calculate_usage_percent :119"]
+    f51["app_ui_get_status_panel :135"]
+    f52["app_ui_get_status_label :165"]
+    f53["app_ui_set_object_hidden :193"]
+    f54["app_ui_set_status_indicator_color :212"]
+    f55["app_ui_drive_mode_to_text :232"]
+    f56["app_ui_update_aux_placeholders :258"]
+    f57["app_ui_apply_aux_state :318"]
+    f58["app_ui_apply_dashboard_data :390"]
+  end
+  subgraph s7["Src/app_data_log.c"]
+    f59["app_data_log_get_oldest_index :37"]
+    f60["app_data_log_init :51"]
+    f61["app_data_log_reset :63"]
+    f62["app_data_log_record :79"]
+    f63["app_data_log_get_capacity :103"]
+    f64["app_data_log_get_count :114"]
+    f65["app_data_log_is_wrapped :130"]
+    f66["app_data_log_get_sample :148"]
+    f67["app_data_log_dump_csv :178"]
+  end
+  subgraph s8["Src/app_emmc_log.c"]
+    f68["app_emmc_log_lock :96"]
+    f69["app_emmc_log_unlock :111"]
+    f70["app_emmc_log_crc32_update :126"]
+    f71["app_emmc_log_crc32_compute :156"]
+    f72["app_emmc_log_record_crc32 :169"]
+    f73["app_emmc_log_record_crc_is_valid :186"]
+    f74["app_emmc_log_write_le16 :202"]
+    f75["app_emmc_log_write_le32 :214"]
+    f76["app_emmc_log_uart_write_bytes :229"]
+    f77["app_emmc_log_build_header :246"]
+    f78["app_emmc_log_write_header_locked :276"]
+    f79["app_emmc_log_flush_locked :304"]
+    f80["app_emmc_log_start_new_session_locked :359"]
+    f81["app_emmc_log_get_records_per_block :382"]
+    f82["app_emmc_log_pack_dump_record :401"]
+    f83["app_emmc_log_init :473"]
+    f84["app_emmc_log_append :537"]
+    f85["app_emmc_log_flush :599"]
+    f86["app_emmc_log_reset_session :620"]
+    f87["app_emmc_log_get_status :645"]
+    f88["app_emmc_log_dump_csv :677"]
+    f89["app_emmc_log_dump_binary :768"]
+  end
+  subgraph s9["Src/app_tasks.c"]
+    f90["app_console_print_help :76"]
+    f91["app_console_print_log_info :89"]
+    f92["app_console_print_emmc_log_info :104"]
+    f93["app_console_handle_command :128"]
+    f94["app_gui_task :238"]
+    f95["app_can_rx_task :289"]
+    f96["app_console_task :337"]
+    f97["app_tasks_start :374"]
+  end
+  subgraph s10["Src/main.c"]
+    f98["main :41"]
+    f99["SystemClock_Config :96"]
+    f100["Error_Handler :154"]
+    f101["vApplicationStackOverflowHook :169"]
+    f102["DebugConsole_Init :185"]
+    f103["MPU_Config :216"]
+  end
+  subgraph s11["Src/startup_stm32h750xx.S"]
+    f104["Reset_Handler :70"]
+    f105["Default_Handler :138"]
+  end
+  subgraph s12["Src/stm32h7xx_hal_msp.c"]
+    f106["HAL_MspInit :83"]
+  end
+  subgraph s13["Src/stm32h7xx_it.c"]
+    f107["NMI_Handler :99"]
+    f108["HardFault_Handler :118"]
+    f109["MemManage_Handler :136"]
+    f110["BusFault_Handler :154"]
+    f111["UsageFault_Handler :172"]
+    f112["SVC_Handler :192"]
+    f113["DebugMon_Handler :210"]
+    f114["PendSV_Handler :227"]
+    f115["SysTick_Handler :249"]
+    f116["SDMMC1_IRQHandler :298"]
+    f117["EXTI15_10_IRQHandler :331"]
+    f118["MDMA_IRQHandler :343"]
+  end
+  subgraph s14["Src/syscall.c"]
+    f119["initialise_monitor_handles :51"]
+    f120["_getpid :58"]
+    f121["_kill :66"]
+    f122["_exit :81"]
+    f123["_read :95"]
+    f124["_write :115"]
+    f125["_close :130"]
+    f126["_fstat :142"]
+    f127["_isatty :152"]
+    f128["_lseek :162"]
+    f129["_open :174"]
+    f130["_wait :185"]
+    f131["_unlink :195"]
+    f132["_times :205"]
+    f133["_stat :217"]
+    f134["_link :227"]
+    f135["_fork :238"]
+    f136["_execve :248"]
+    f137["starm_putc :273"]
+    f138["starm_getc :292"]
+  end
+  subgraph s15["Src/sysmem.c"]
+    f139["_sbrk :73"]
+  end
+  subgraph s16["Src/system_stm32h7xx.c"]
+    f140["SystemInit :171"]
+    f141["SystemCoreClockUpdate :317"]
+    f142["SystemInit_ExtMemCtl :423"]
+    f143["ExitRun0Mode :602"]
+  end
+  subgraph s17["dump_emmc_bin.py"]
+    f144["crc32_bytes :64"]
+    f145["parse_args :74"]
+    f146["read_exact :102"]
+    f147["wait_for_header :115"]
+    f148["unpack_header :141"]
+    f149["read_dump :175"]
+    f150["unpack_record :221"]
+    f151["unpack_footer :239"]
+    f152["write_csv :262"]
+    f153["write_xlsx :276"]
+    f154["main :297"]
+  end
+  subgraph s18["tests/can_host/test_app_can.c"]
+    f155["HAL_GetTick :43"]
+    f156["HAL_FDCAN_GetTxFifoFreeLevel :53"]
+    f157["HAL_FDCAN_AddMessageToTxFifoQ :65"]
+    f158["HAL_FDCAN_GetRxFifoFillLevel :85"]
+    f159["HAL_FDCAN_GetRxMessage :99"]
+    f160["HAL_RCCEx_PeriphCLKConfig :123"]
+    f161["HAL_FDCAN_Init :134"]
+    f162["HAL_FDCAN_ConfigFilter :145"]
+    f163["HAL_FDCAN_ConfigGlobalFilter :158"]
+    f164["HAL_FDCAN_Start :177"]
+    f165["HAL_GPIO_Init :188"]
+    f166["HAL_GPIO_DeInit :200"]
+    f167["reset_state :214"]
+    f168["response :249"]
+    f169["enqueue :280"]
+    f170["decode :292"]
+    f171["test_initialization_and_recovery :306"]
+    f172["test_null_guards_and_configuration :332"]
+    f173["test_all_pid_conversions :381"]
+    f174["test_exhaustive_scalar_domains :418"]
+    f175["test_exact_single_frame_lengths :449"]
+    f176["test_frame_metadata_rejection :471"]
+    f177["test_dlc_bounds_and_unknown_messages :499"]
+    f178["test_power_rounding_and_voltage_fallback :526"]
+    f179["test_current_and_power_statistics :553"]
+    f180["test_request_cycle_and_payload :585"]
+    f181["test_timeout_boundary :621"]
+    f182["test_tick_rollover :644"]
+    f183["test_tx_backpressure_and_recovery :667"]
+    f184["test_rx_failure_fifo_burst_and_recovery :694"]
+    f185["test_unsolicited_and_malformed_pending_responses :719"]
+    f186["test_oversized_hal_payload :752"]
+    f187["print_dashboard_json :776"]
+    f188["replay_stdin :814"]
+    f189["main :883"]
+  end
+  subgraph s19["tests/dashboard_playback/test_playback.js"]
+    f190["fakeClock :22"]
+    f191["fakeClock.now :33"]
+    f192["fakeClock.requestFrame :40"]
+    f193["fakeClock.cancelFrame :47"]
+    f194["fakeClock.advance :56"]
+    f195["fakeClock.elapse :69"]
+    f196["fakeClock.pending :76"]
+    f197["captures :87"]
+    f198["timestampLoop :103"]
+    f199["controls :125"]
+    f200["noLoop :154"]
+    f201["fakeBrowser :177"]
+    f202["fakeBrowser.constructor :189"]
+    f203["fakeBrowser.addEventListener :206"]
+    f204["fakeBrowser.dispatch :214"]
+    f205["fakeBrowser.setAttribute :221"]
+    f206["fakeBrowser.replaceWith :229"]
+    f207["fakeBrowser.constructor :239"]
+    f208["fakeBrowser.load :246"]
+    f209["fakeBrowser.fail :253"]
+    f210["fakeBrowser.matchMedia :269"]
+    f211["fakeBrowser.getElementById :278"]
+    f212["imageAlignment :290"]
+    f213["imageFailure :316"]
+    f214["shortRecordings :341"]
+    f215["preference :360"]
+  end
+  subgraph s20["tests/dashboard_ui/test_binding.c"]
+    f216["app_data_log_get_count :27"]
+    f217["app_data_log_get_capacity :37"]
+    f218["app_emmc_log_get_status :48"]
+    f219["assert_text :59"]
+    f220["assert_border_color :71"]
+    f221["test_auxiliary_unknowns_and_faults :84"]
+    f222["test_existing_demo :146"]
+    f223["test_battery_labels_and_storage_usage :176"]
+    f224["test_framebuffer_capture :220"]
+    f225["main :242"]
+  end
+  subgraph s21["tests/storage_host/include/semphr.h"]
+    f226["xSemaphoreCreateMutex :12"]
+    f227["xSemaphoreTake :22"]
+    f228["xSemaphoreGive :33"]
+  end
+  subgraph s22["tests/storage_host/test_app_emmc_log.c"]
+    f229["BSP_MMC_Init :26"]
+    f230["BSP_MMC_GetCardInfo :38"]
+    f231["BSP_MMC_ReadBlocks :51"]
+    f232["BSP_MMC_WriteBlocks :70"]
+    f233["HAL_UART_Transmit :87"]
+    f234["append_sample :108"]
+    f235["check_header :137"]
+    f236["check_staged_bytes :154"]
+    f237["main :171"]
+  end
+  subgraph s23["tests/test_aux_scenario.py"]
+    f238["AuxiliaryScenarioTests.scenario :22"]
+    f239["AuxiliaryScenarioTests.test_missing_auxiliary_is_explicitly_unknown :29"]
+    f240["AuxiliaryScenarioTests.test_constants_and_independent_statuses :44"]
+    f241["AuxiliaryScenarioTests.test_speed_linear_ramp_and_endpoint_hold :63"]
+    f242["AuxiliaryScenarioTests.test_step_speed_can_move_between_known_and_unknown :76"]
+    f243["AuxiliaryScenarioTests.test_drive_mode_steps_include_unknown_and_all_supported_modes :89"]
+    f244["AuxiliaryScenarioTests.test_every_status_steps_through_all_states :103"]
+    f245["AuxiliaryScenarioTests.test_constant_speed_boundaries :119"]
+    f246["AuxiliaryScenarioTests.test_rejects_invalid_constant_types_values_and_unknown_fields :129"]
+    f247["AuxiliaryScenarioTests.test_rejects_invalid_track_shapes_times_and_missing_values :149"]
+    f248["AuxiliaryScenarioTests.test_rejects_linear_unknown_speed_or_categorical_tracks :177"]
+    f249["AuxiliaryScenarioTests.test_invalid_categorical_point_values_are_rejected :196"]
+    f250["AuxiliaryScenarioTests.test_json_duplicate_fields_are_rejected_at_every_auxiliary_level :213"]
+    f251["AuxiliaryScenarioTests.test_rejects_invalid_sampling_time :233"]
+    f252["AuxiliaryScenarioTests.test_returned_status_mapping_does_not_mutate_the_scenario :245"]
+    f253["AuxiliaryScenarioTests.test_direct_three_argument_construction_remains_compatible :255"]
+    f254["AuxiliaryScenarioTests.test_existing_battery_sampling_and_faults_are_unchanged :265"]
+    f255["AuxiliaryScenarioTests.test_dashboard_example_has_speed_modes_status_faults_and_can_recovery :283"]
+  end
+  subgraph s24["tests/test_can_pipeline.py"]
+    f256["VirtualFirmwarePipelineTests.setUpClass :25"]
+    f257["VirtualFirmwarePipelineTests.tearDownClass :45"]
+    f258["VirtualFirmwarePipelineTests.replay_bus :52"]
+    f259["VirtualFirmwarePipelineTests.decode_frames :68"]
+    f260["VirtualFirmwarePipelineTests.test_all_ten_virtual_signals_reach_firmware_snapshot :80"]
+    f261["VirtualFirmwarePipelineTests.test_time_varying_current_retains_real_firmware_statistics :104"]
+    f262["VirtualFirmwarePipelineTests.test_malformed_virtual_frames_preserve_state_and_recover :124"]
+    f263["VirtualFirmwarePipelineTests.test_json_timeline_and_fault_window_reach_real_driver :140"]
+  end
+  subgraph s25["tests/test_can_sim.py"]
+    f264["ProtocolTests.test_all_ten_response_encodings :20"]
+    f265["ProtocolTests.test_request_round_trip_and_padding :48"]
+    f266["ProtocolTests.test_rejects_invalid_request_shapes :62"]
+    f267["ProtocolTests.test_encodes_boundary_values_without_wrapping :88"]
+    f268["ProtocolTests.test_rejects_nonfinite_and_out_of_range_values :107"]
+    f269["ProtocolTests.test_raw_override_allows_unphysical_wire_extrema :122"]
+    f270["ScenarioTests.test_linear_interpolation_and_endpoint_hold :137"]
+    f271["ScenarioTests.test_step_changes_at_exact_point_and_preserves_other_defaults :150"]
+    f272["ScenarioTests.test_rejects_ambiguous_or_invalid_scenario_configuration :163"]
+    f273["ScenarioTests.test_json_file_loading_rejects_duplicate_fields :195"]
+    f274["ScenarioTests.test_checked_in_scenarios_validate_and_cover_every_fault_type :209"]
+    f275["ScenarioTests.test_fault_intervals_are_start_inclusive_end_exclusive :223"]
+    f276["ResponderTests.responder :238"]
+    f277["ResponderTests.test_samples_value_at_request_time :249"]
+    f278["ResponderTests.test_pause_window_recovers_and_unrelated_requests_are_ignored :262"]
+    f279["ResponderTests.test_drop_every_second_matching_request :276"]
+    f280["ResponderTests.test_wrong_identifier_service_pci_and_unknown_pid_mutations :289"]
+    f281["ResponderTests.test_short_dlc_truncates_actual_payload :309"]
+    f282["ResponderTests.test_duplicate_spacing_and_burst_count :319"]
+    f283["ResponderTests.test_raw_fault_reaches_current_and_soc_wire_boundaries :331"]
+  end
+  subgraph s26["tests/test_can_sim_bus.py"]
+    f284["VirtualBusTests.setUp :25"]
+    f285["VirtualBusTests.test_all_pids_cross_actual_virtual_bus :37"]
+    f286["VirtualBusTests.test_delay_and_pause_over_bus_with_deterministic_clock :57"]
+    f287["VirtualBusTests.test_duplicate_and_malformed_frames_cross_bus :82"]
+    f288["VirtualBusTests.test_pending_queue_limit_stops_unbounded_delayed_bursts :99"]
+    f289["VirtualBusTests.test_rejects_clock_reversal :115"]
+    f290["InterfaceSafetyTests.sysfs :130"]
+    f291["InterfaceSafetyTests.link_result :145"]
+    f292["InterfaceSafetyTests.test_accepts_only_virtual_can_sysfs_and_vcan_kernel_kind :153"]
+    f293["InterfaceSafetyTests.test_rejects_physical_device_named_vcan0 :164"]
+    f294["InterfaceSafetyTests.test_rejects_noncan_virtual_device_and_vxcan :175"]
+    f295["InterfaceSafetyTests.test_rejects_missing_kernel_evidence_and_nonlinux :191"]
+    f296["InterfaceSafetyTests.test_disallows_other_backends_and_physical_channel_names :207"]
+    f297["CLITests.test_default_virtual_demo_requests_and_receives :222"]
+    f298["CLITests.test_cli_rejects_physical_bus_before_open :238"]
+  end
+  subgraph s27["tests/test_dashboard_cli.py"]
+    f299["DashboardCliTests.run_command :21"]
+    f300["DashboardCliTests.test_open_launches_the_completed_viewer_uri :47"]
+    f301["DashboardCliTests.test_default_run_keeps_browser_launch_optional :58"]
+    f302["DashboardCliTests.test_failed_browser_launch_preserves_completed_artifacts :69"]
+    f303["DashboardCliTests.test_browser_error_reports_the_saved_viewer :80"]
+  end
+  subgraph s28["tests/test_dashboard_playback.py"]
+    f304["DashboardPlaybackTests.test_recorded_playback_controls_and_image_alignment :15"]
+  end
+  subgraph s29["tests/test_dashboard_sim.py"]
+    f305["DashboardSimulationTests.setUpClass :20"]
+    f306["DashboardSimulationTests.test_user_timelines_reach_actual_screen_and_export :28"]
+    f307["DashboardSimulationTests.test_unknown_and_fault_window_recover_without_replacing_the_demo :63"]
+    f308["DashboardSimulationTests.test_host_rejects_invalid_command_without_hardware :86"]
+    f309["DashboardSimulationTests.test_host_rejects_overflow_and_malformed_payload_tokens :96"]
+    f310["DashboardSimulationTests.test_output_cannot_overwrite_input_or_hard_link :112"]
+    f311["DashboardSimulationTests.test_invalid_run_bounds_do_not_start_host :135"]
+    f312["DashboardSimulationTests.test_default_captures_follow_inputs_ten_times_per_second :148"]
+  end
+  subgraph s30["tests/test_function_docs.py"]
+    f313["FunctionInventoryTests.test_ignores_commented_functions_and_calls_inside_strings :14"]
+    f314["FunctionInventoryTests.test_finds_pointer_return_and_callback_reference :32"]
+    f315["FunctionInventoryTests.test_resolves_static_names_in_their_own_file :48"]
+    f316["FunctionInventoryTests.test_missing_comment_is_not_replaced_with_invented_description :59"]
+    f317["FunctionInventoryTests.test_nested_python_calls_belong_to_the_nested_function :69"]
+    f318["FunctionInventoryTests.test_production_calls_do_not_resolve_to_test_hal_fakes :85"]
+    f319["FunctionInventoryTests.test_production_calls_do_not_resolve_to_dashboard_host_fakes :95"]
+    f320["FunctionInventoryTests.test_javascript_nested_scope_and_callbacks :108"]
+    f321["FunctionInventoryTests.test_javascript_same_named_helpers_are_lexical :129"]
+    f322["FunctionInventoryTests.test_javascript_anonymous_callback_has_location_and_comment :145"]
+    f323["FunctionInventoryTests.test_javascript_missing_comment_remains_a_gap :157"]
+    f324["FunctionInventoryTests.test_html_script_lines_and_noncode_data :163"]
+    f325["FunctionInventoryTests.test_javascript_dynamic_members_remain_unresolved :178"]
+  end
+  subgraph s31["tests/test_storage_export.py"]
+    f326["StorageExportTests.setUpClass :24"]
+    f327["StorageExportTests.tearDownClass :49"]
+    f328["StorageExportTests.capture :56"]
+    f329["StorageExportTests.unpack_rows :66"]
+    f330["StorageExportTests.test_repeated_partial_flush_preserves_both_samples :77"]
+    f331["StorageExportTests.test_csv_export_preserves_samples_across_partial_flushes :88"]
+    f332["StorageExportTests.test_production_stream_crc_is_accepted_by_serial_cli :98"]
+    f333["StorageExportTests.test_production_stream_crc_is_accepted_by_serial_cli.FakeSerial.__init__ :110"]
+    f334["StorageExportTests.test_production_stream_crc_is_accepted_by_serial_cli.FakeSerial.reset_input_buffer :118"]
+    f335["StorageExportTests.test_production_stream_crc_is_accepted_by_serial_cli.FakeSerial.reset_output_buffer :125"]
+    f336["StorageExportTests.test_production_stream_crc_is_accepted_by_serial_cli.FakeSerial.write :131"]
+    f337["StorageExportTests.test_dump_then_append_crosses_block_boundary_once :150"]
+    f338["StorageExportTests.test_full_capacity_rejects_next_record_without_counting_it :160"]
+    f339["StorageExportTests.test_unflushed_append_automatically_crosses_block_boundary :173"]
+    f340["StorageExportTests.test_reset_session_discards_old_tail_and_restarts_counters :183"]
+    f341["StorageExportTests.test_status_does_not_double_count_retained_tail_allocation :193"]
+    f342["StorageExportTests.test_write_read_and_uart_failures_are_retryable :202"]
+    f343["StorageExportTests.test_empty_session_flush_is_repeatable :212"]
+    f344["StorageExportTests.test_storage_corruption_is_reported_in_export_record_flag :222"]
+    f345["StorageExportTests.test_reader_round_trips_all_signed_fields_and_raw_bytes :233"]
+    f346["StorageExportTests.test_wire_corruption_is_rejected_at_header_stream_and_footer :259"]
+    f347["StorageExportTests.test_footer_count_mismatch_is_rejected_with_valid_crc :274"]
+    f348["StorageExportTests.test_unsupported_version_and_truncated_capture_are_rejected :287"]
+    f349["StorageExportTests.test_offline_cli_works_without_serial_and_keeps_input :304"]
+    f350["StorageExportTests.test_offline_cli_rejects_self_overwrite_and_trailing_data :323"]
+  end
+  subgraph s32["tools/can_sim/__main__.py"]
+    f351["_positive :25"]
+    f352["_log_frame :41"]
+    f353["run :55"]
+    f354["main :109"]
+  end
+  subgraph s33["tools/can_sim/engine.py"]
+    f355["Responder.__init__ :42"]
+    f356["Responder.plan :51"]
+    f357["Runner.__init__ :130"]
+    f358["Runner.pending :151"]
+    f359["Runner._send_due :159"]
+    f360["Runner.step :175"]
+  end
+  subgraph s34["tools/can_sim/protocol.py"]
+    f361["finite_number :54"]
+    f362["validate_value :72"]
+    f363["encode_response :88"]
+    f364["make_request :121"]
+    f365["request_signal :137"]
+  end
+  subgraph s35["tools/can_sim/scenario.py"]
+    f366["_object :36"]
+    f367["_integer :51"]
+    f368["_unique_object :68"]
+    f369["Track.value_at :95"]
+    f370["_track :136"]
+    f371["_auxiliary_value :164"]
+    f372["_auxiliary_track :189"]
+    f373["_auxiliary_tracks :221"]
+    f374["_unknown_auxiliary_tracks :236"]
+    f375["_fault :246"]
+    f376["Scenario.from_dict :310"]
+    f377["Scenario.from_text :335"]
+    f378["Scenario.from_file :345"]
+    f379["Scenario.values_at :354"]
+    f380["Scenario.auxiliary_at :366"]
+    f381["Scenario.active_faults :383"]
+  end
+  subgraph s36["tools/can_sim/transport.py"]
+    f382["validate_vcan :19"]
+    f383["open_bus :53"]
+  end
+  subgraph s37["tools/dashboard_host/fake_hal.c"]
+    f384["dashboard_host_set_tick :32"]
+    f385["HAL_GetTick :41"]
+    f386["host_dlc :50"]
+    f387["dashboard_host_receive :66"]
+    f388["HAL_FDCAN_GetTxFifoFreeLevel :89"]
+    f389["HAL_FDCAN_AddMessageToTxFifoQ :101"]
+    f390["dashboard_host_take_tx :119"]
+    f391["HAL_FDCAN_GetRxFifoFillLevel :132"]
+    f392["HAL_FDCAN_GetRxMessage :145"]
+    f393["HAL_RCCEx_PeriphCLKConfig :166"]
+    f394["HAL_FDCAN_Init :176"]
+    f395["HAL_FDCAN_ConfigFilter :186"]
+    f396["HAL_FDCAN_ConfigGlobalFilter :198"]
+    f397["HAL_FDCAN_Start :216"]
+    f398["HAL_GPIO_Init :226"]
+    f399["HAL_GPIO_DeInit :235"]
+    f400["xSemaphoreCreateMutex :245"]
+    f401["xSemaphoreTake :254"]
+    f402["xSemaphoreGive :264"]
+    f403["BSP_MMC_Init :274"]
+    f404["BSP_MMC_GetCardInfo :287"]
+    f405["storage_range :300"]
+    f406["BSP_MMC_ReadBlocks :310"]
+    f407["BSP_MMC_WriteBlocks :323"]
+    f408["dashboard_host_export_begin :336"]
+    f409["HAL_UART_Transmit :346"]
+    f410["dashboard_host_export_save :363"]
+  end
+  subgraph s38["tools/dashboard_host/main.c"]
+    f411["json_string :27"]
+    f412["json_label :47"]
+    f413["split_fields :60"]
+    f414["parse_integer :78"]
+    f415["read_frame :99"]
+    f416["print_step :133"]
+    f417["main :213"]
+  end
+  subgraph s39["tools/dashboard_host/render.c"]
+    f418["dashboard_render_flush :34"]
+    f419["dashboard_render_init :59"]
+    f420["dashboard_render_step :92"]
+    f421["dashboard_render_capture :110"]
+    f422["dashboard_render_shutdown :148"]
+  end
+  subgraph s40["tools/dashboard_sim/__main__.py"]
+    f423["main :17"]
+  end
+  subgraph s41["tools/dashboard_sim/playback.js"]
+    f424["createPlayback :24"]
+    f425["createPlayback.frameIndex :43"]
+    f426["createPlayback.getState :62"]
+    f427["createPlayback.publish :73"]
+    f428["createPlayback.cancelAnimation :84"]
+    f429["createPlayback.advance :98"]
+    f430["createPlayback.animate :119"]
+    f431["createPlayback.play :134"]
+    f432["createPlayback.pause :150"]
+    f433["createPlayback.seek :165"]
+    f434["createPlayback.setSpeed :179"]
+    f435["createPlayback.setLoop :193"]
+    f436["createPlayback.replay :206"]
+    f437["mountPlayback :225"]
+    f438["mountPlayback.requestCapture :263"]
+    f439["mountPlayback.requestCapture.commitCapture :283"]
+    f440["mountPlayback.requestCapture.rejectCapture :301"]
+    f441["mountPlayback.updateControls :325"]
+    f442["mountPlayback.now :344"]
+    f443["mountPlayback.requestFrame :352"]
+    f444["mountPlayback.cancelFrame :359"]
+    f445["mountPlayback.togglePlay :368"]
+    f446["mountPlayback.replayRecording :378"]
+    f447["mountPlayback.seekRecording :386"]
+    f448["mountPlayback.changeSpeed :394"]
+    f449["mountPlayback.changeLoop :401"]
+  end
+  subgraph s42["tools/dashboard_sim/runner.py"]
+    f450["build_host :32"]
+    f451["Host.__init__ :62"]
+    f452["Host.__enter__ :77"]
+    f453["Host.__exit__ :85"]
+    f454["Host.command :110"]
+    f455["Host.step :137"]
+    f456["Host.artifact :166"]
+    f457["ppm_to_png :181"]
+    f458["ppm_to_png.chunk :196"]
+    f459["write_viewer :211"]
+    f460["run_scenario :227"]
+  end
+  subgraph s43["tools/function_explorer.html"]
+    f461["&lt;callback@44:36&gt; :44"]
+    f462["setText :50"]
+    f463["functionButton :56"]
+    f464["functionButton.&lt;callback@62:36&gt; :62"]
+    f465["renderList :70"]
+    f466["renderList.&lt;callback@74:36&gt; :74"]
+    f467["renderList.&lt;callback@77:19&gt; :77"]
+    f468["addSvg :84"]
+    f469["addSvg.&lt;callback@87:38&gt; :87"]
+    f470["drawGraph :96"]
+    f471["drawGraph.node :108"]
+    f472["drawGraph.node.&lt;callback@114:37&gt; :114"]
+    f473["drawGraph.node.&lt;callback@116:39&gt; :116"]
+    f474["drawGraph.&lt;callback@119:16&gt; :119"]
+    f475["drawGraph.&lt;callback@121:17&gt; :121"]
+    f476["drawGraph.&lt;callback@123:16&gt; :123"]
+    f477["drawGraph.&lt;callback@125:17&gt; :125"]
+    f478["selectFunction :135"]
+    f479["selectFunction.&lt;callback@140:43&gt; :140"]
+    f480["selectFunction.&lt;callback@142:43&gt; :142"]
+    f481["selectFunction.&lt;callback@146:19&gt; :146"]
+    f482["selectFunction.&lt;callback@151:41&gt; :151"]
+    f483["selectFunction.&lt;callback@151:75&gt; :151"]
+    f484["selectFunction.&lt;callback@153:41&gt; :153"]
+    f485["&lt;callback@159:27&gt; :159"]
+    f486["&lt;callback@159:63&gt; :159"]
+    f487["&lt;callback@164:32&gt; :164"]
+  end
+  subgraph s44["tools/generate_function_docs.py"]
+    f488["walk :26"]
+    f489["clean_comment :38"]
+    f490["collect_c_functions :50"]
+    f491["collect_python_functions :104"]
+    f492["collect_python_functions.body_calls :120"]
+    f493["collect_python_functions.visit :134"]
+    f494["collect_javascript_functions :170"]
+    f495["collect_javascript_functions.adjacent_description :187"]
+    f496["collect_javascript_functions.body_expressions :213"]
+    f497["collect_html_functions :261"]
+    f498["collect_other_functions :281"]
+    f499["resolve_edges :325"]
+    f500["project_sources :363"]
+    f501["collect_inventory :379"]
+    f502["write_outputs :414"]
+    f503["main :451"]
+  end
+  subgraph s45["ui/components/ui_comp.c"]
+    f504["ui_comp_get_child :31"]
+    f505["get_component_child_event_cb :47"]
+    f506["del_component_child_event_cb :60"]
+  end
+  subgraph s46["ui/components/ui_comp_hook.c"]
+    f507["ui_comp_Label1_create_hook :21"]
+  end
+  subgraph s47["ui/components/ui_comp_label1.c"]
+    f508["ui_Label1_create :24"]
+  end
+  subgraph s48["ui/screens/ui_DebugScreen.c"]
+    f509["ui_event_DebugScreen :36"]
+    f510["ui_DebugScreen_screen_init :56"]
+    f511["ui_DebugScreen_screen_destroy :247"]
+  end
+  subgraph s49["ui/screens/ui_MainScreen.c"]
+    f512["ui_clamp_slider_value :60"]
+    f513["ui_slider_value_to_y :80"]
+    f514["ui_temp_power_slider_color :96"]
+    f515["ui_batt_level_slider_color :118"]
+    f516["ui_set_slider_image_color :140"]
+    f517["ui_set_slider_state :159"]
+    f518["ui_set_speed_demo_value :175"]
+    f519["ui_step_demo_slider_value :191"]
+    f520["ui_style_status_panel :213"]
+    f521["ui_set_batt_temp_slider_value :230"]
+    f522["ui_set_power_consumption_slider_value :243"]
+    f523["ui_set_batt_level_slider_value :258"]
+    f524["ui_show_main_screen_slider_demo :271"]
+    f525["ui_step_main_screen_slider_demo :287"]
+    f526["ui_event_MainScreen :325"]
+    f527["ui_MainScreen_screen_init :346"]
+    f528["ui_MainScreen_screen_destroy :731"]
+  end
+  subgraph s50["ui/screens/ui_Screen1.c"]
+    f529["ui_Screen1_screen_init :28"]
+    f530["ui_Screen1_screen_destroy :51"]
+  end
+  subgraph s51["ui/ui.c"]
+    f531["ui_init :44"]
+    f532["ui_destroy :72"]
+  end
+  subgraph s52["ui/ui_helpers.c"]
+    f533["_ui_bar_set_property :21"]
+    f534["_ui_basic_set_property :42"]
+    f535["_ui_dropdown_set_property :61"]
+    f536["_ui_image_set_property :79"]
+    f537["_ui_label_set_property :91"]
+    f538["_ui_roller_set_property :104"]
+    f539["_ui_slider_set_property :125"]
+    f540["_ui_screen_change :147"]
+    f541["_ui_screen_delete :160"]
+    f542["_ui_arc_increment :173"]
+    f543["_ui_bar_increment :187"]
+    f544["_ui_slider_increment :206"]
+    f545["_ui_keyboard_set_target :226"]
+    f546["_ui_flag_modify :243"]
+    f547["_ui_state_modify :262"]
+    f548["_ui_textarea_move_cursor :282"]
+    f549["scr_unloaded_delete_cb :308"]
+    f550["_ui_opacity_set :323"]
+    f551["_ui_anim_callback_free_user_data :334"]
+    f552["_ui_anim_callback_set_x :347"]
+    f553["_ui_anim_callback_set_y :360"]
+    f554["_ui_anim_callback_set_width :373"]
+    f555["_ui_anim_callback_set_height :386"]
+    f556["_ui_anim_callback_set_opacity :400"]
+    f557["_ui_anim_callback_set_image_zoom :414"]
+    f558["_ui_anim_callback_set_image_angle :428"]
+    f559["_ui_anim_callback_set_image_frame :441"]
+    f560["_ui_anim_callback_get_x :463"]
+    f561["_ui_anim_callback_get_y :475"]
+    f562["_ui_anim_callback_get_width :487"]
+    f563["_ui_anim_callback_get_height :499"]
+    f564["_ui_anim_callback_get_opacity :511"]
+    f565["_ui_anim_callback_get_image_zoom :523"]
+    f566["_ui_anim_callback_get_image_angle :535"]
+    f567["_ui_anim_callback_get_image_frame :547"]
+    f568["_ui_arc_set_text_value :560"]
+    f569["_ui_slider_set_text_value :574"]
+    f570["_ui_checked_set_text_value :595"]
+    f571["_ui_spinbox_step :613"]
+    f572["_ui_switch_theme :635"]
+  end
+  f10 -. reference .-> f9
+  f10 --> f6
+  f10 --> f3
+  f10 --> f8
+  f10 --> f7
+  f10 --> f5
+  f10 --> f4
+  f9 --> f3
+  f3 --> f100
+  f8 --> f3
+  f7 --> f3
+  f12 -. reference .-> f11
+  f43 --> f44
+  f42 --> f25
+  f42 --> f44
+  f20 --> f15
+  f24 --> f18
+  f24 --> f21
+  f24 --> f17
+  f24 --> f16
+  f38 --> f29
+  f38 --> f30
+  f38 --> f35
+  f38 --> f37
+  f38 --> f31
+  f38 --> f32
+  f39 --> f24
+  f39 --> f38
+  f40 --> f28
+  f40 --> f13
+  f40 --> f44
+  f41 --> f34
+  f41 --> f22
+  f41 --> f23
+  f41 --> f33
+  f41 --> f39
+  f41 --> f36
+  f18 --> f14
+  f31 --> f15
+  f32 --> f15
+  f32 --> f20
+  f32 --> f19
+  f57 --> f55
+  f57 --> f52
+  f57 --> f51
+  f57 --> f53
+  f57 --> f54
+  f58 --> f50
+  f58 --> f49
+  f58 --> f48
+  f58 --> f47
+  f58 --> f46
+  f58 --> f63
+  f58 --> f64
+  f58 --> f87
+  f58 --> f523
+  f58 --> f521
+  f58 --> f522
+  f54 --> f52
+  f54 --> f51
+  f47 --> f45
+  f67 --> f64
+  f67 --> f66
+  f66 --> f59
+  f60 --> f61
+  f84 --> f79
+  f84 --> f68
+  f84 --> f72
+  f84 --> f69
+  f84 --> f78
+  f71 --> f70
+  f89 --> f71
+  f89 --> f70
+  f89 --> f79
+  f89 --> f81
+  f89 --> f68
+  f89 --> f82
+  f89 --> f73
+  f89 --> f76
+  f89 --> f69
+  f89 --> f74
+  f89 --> f75
+  f88 --> f79
+  f88 --> f81
+  f88 --> f68
+  f88 --> f73
+  f88 --> f69
+  f85 --> f79
+  f85 --> f68
+  f85 --> f69
+  f79 --> f78
+  f87 --> f68
+  f87 --> f69
+  f83 --> f68
+  f83 --> f80
+  f83 --> f69
+  f82 --> f71
+  f82 --> f74
+  f82 --> f75
+  f72 --> f71
+  f73 --> f72
+  f86 --> f68
+  f86 --> f80
+  f86 --> f69
+  f80 --> f78
+  f78 --> f77
+  f95 --> f40
+  f95 --> f27
+  f95 --> f41
+  f95 --> f62
+  f95 --> f84
+  f93 --> f27
+  f93 --> f26
+  f93 --> f67
+  f93 --> f61
+  f93 --> f89
+  f93 --> f88
+  f93 --> f85
+  f93 --> f86
+  f93 --> f92
+  f93 --> f90
+  f93 --> f91
+  f92 --> f87
+  f91 --> f63
+  f91 --> f64
+  f91 --> f65
+  f96 --> f93
+  f96 --> f92
+  f96 --> f90
+  f96 --> f91
+  f94 --> f10
+  f94 --> f12
+  f94 --> f57
+  f94 --> f58
+  f94 --> f56
+  f94 --> f531
+  f97 --> f60
+  f97 --> f83
+  f97 -. reference .-> f95
+  f97 -. reference .-> f96
+  f97 -. reference .-> f94
+  f102 --> f100
+  f99 --> f100
+  f98 --> f27
+  f98 --> f97
+  f98 --> f102
+  f98 --> f100
+  f98 --> f103
+  f98 --> f99
+  f101 --> f100
+  f122 --> f121
+  f140 --> f142
+  f154 --> f145
+  f154 --> f149
+  f154 --> f147
+  f154 --> f152
+  f154 --> f153
+  f149 --> f146
+  f149 --> f151
+  f149 --> f148
+  f149 --> f150
+  f151 --> f144
+  f148 --> f144
+  f150 --> f144
+  f147 --> f146
+  f170 --> f168
+  f189 --> f188
+  f189 -. reference .-> f173
+  f189 -. reference .-> f179
+  f189 -. reference .-> f177
+  f189 -. reference .-> f175
+  f189 -. reference .-> f174
+  f189 -. reference .-> f176
+  f189 -. reference .-> f171
+  f189 -. reference .-> f172
+  f189 --> f186
+  f189 -. reference .-> f178
+  f189 -. reference .-> f180
+  f189 -. reference .-> f184
+  f189 -. reference .-> f182
+  f189 -. reference .-> f181
+  f189 -. reference .-> f183
+  f189 -. reference .-> f185
+  f188 --> f40
+  f188 --> f41
+  f188 --> f169
+  f188 --> f187
+  f188 --> f167
+  f173 --> f170
+  f173 --> f167
+  f179 --> f170
+  f179 --> f167
+  f177 --> f167
+  f177 --> f168
+  f175 --> f167
+  f175 --> f168
+  f174 --> f170
+  f174 --> f167
+  f176 --> f167
+  f176 --> f168
+  f171 --> f40
+  f171 --> f167
+  f172 --> f43
+  f172 --> f42
+  f172 --> f40
+  f172 --> f27
+  f172 --> f41
+  f172 --> f26
+  f172 --> f44
+  f172 --> f167
+  f172 --> f168
+  f186 --> f40
+  f186 --> f41
+  f186 --> f169
+  f186 --> f167
+  f186 --> f168
+  f178 --> f167
+  f180 --> f40
+  f180 --> f41
+  f180 --> f169
+  f180 --> f167
+  f180 --> f168
+  f184 --> f40
+  f184 --> f41
+  f184 --> f169
+  f184 --> f167
+  f184 --> f168
+  f182 --> f40
+  f182 --> f41
+  f182 --> f167
+  f181 --> f40
+  f181 --> f41
+  f181 --> f167
+  f183 --> f40
+  f183 --> f41
+  f183 --> f167
+  f185 --> f40
+  f185 --> f41
+  f185 --> f169
+  f185 --> f167
+  f185 --> f168
+  f199 --> f197
+  f199 --> f190
+  f199 --> f424
+  f201 --> f190
+  f212 --> f197
+  f212 --> f201
+  f212 --> f437
+  f213 --> f197
+  f213 --> f201
+  f213 --> f437
+  f200 --> f197
+  f200 --> f190
+  f200 --> f424
+  f215 --> f197
+  f215 --> f201
+  f215 --> f437
+  f214 --> f197
+  f214 --> f201
+  f214 --> f437
+  f198 --> f197
+  f198 --> f190
+  f198 --> f424
+  f225 --> f221
+  f225 --> f223
+  f225 --> f222
+  f225 --> f224
+  f225 --> f421
+  f225 --> f419
+  f225 --> f422
+  f225 --> f420
+  f221 --> f57
+  f221 --> f220
+  f221 --> f219
+  f223 --> f58
+  f223 --> f219
+  f222 --> f56
+  f224 --> f421
+  f234 --> f84
+  f237 --> f84
+  f237 --> f89
+  f237 --> f88
+  f237 --> f85
+  f237 --> f83
+  f237 --> f86
+  f237 --> f234
+  f237 --> f235
+  f237 --> f236
+  f354 --> f353
+  f353 --> f352
+  f363 --> f362
+  f362 --> f361
+  f376 --> f373
+  f376 --> f375
+  f376 --> f366
+  f376 --> f370
+  f372 --> f371
+  f372 --> f366
+  f373 --> f372
+  f373 --> f366
+  f375 --> f367
+  f375 --> f366
+  f370 --> f366
+  f374 --> f373
+  f383 --> f382
+  f406 --> f405
+  f407 --> f405
+  f387 --> f386
+  f412 --> f411
+  f417 --> f40
+  f417 --> f41
+  f417 --> f26
+  f417 --> f57
+  f417 --> f58
+  f417 --> f60
+  f417 --> f62
+  f417 --> f84
+  f417 --> f89
+  f417 --> f83
+  f417 --> f408
+  f417 --> f410
+  f417 --> f384
+  f417 --> f414
+  f417 --> f416
+  f417 --> f415
+  f417 --> f413
+  f417 --> f421
+  f417 --> f419
+  f417 --> f422
+  f417 --> f420
+  f416 --> f64
+  f416 --> f87
+  f416 --> f390
+  f416 --> f412
+  f415 --> f387
+  f415 --> f414
+  f415 --> f413
+  f419 -. reference .-> f418
+  f419 --> f531
+  f422 --> f532
+  f429 --> f428
+  f430 --> f429
+  f430 --> f427
+  f426 --> f425
+  f432 --> f429
+  f432 --> f428
+  f432 --> f427
+  f431 -. reference .-> f430
+  f431 --> f427
+  f427 --> f426
+  f436 --> f431
+  f436 --> f433
+  f433 --> f427
+  f435 --> f429
+  f435 --> f427
+  f434 --> f429
+  f434 --> f427
+  f424 -. reference .-> f432
+  f424 --> f427
+  f441 --> f438
+  f437 --> f424
+  f437 -. reference .-> f441
+  f460 --> f457
+  f460 --> f459
+  f474 --> f468
+  f475 --> f468
+  f476 --> f471
+  f477 --> f471
+  f472 --> f478
+  f473 --> f478
+  f471 --> f468
+  f470 --> f468
+  f470 --> f471
+  f470 --> f462
+  f464 --> f478
+  f467 --> f463
+  f465 --> f462
+  f481 --> f463
+  f478 --> f470
+  f478 --> f465
+  f478 --> f462
+  f490 --> f489
+  f490 --> f488
+  f497 --> f494
+  f501 --> f490
+  f501 --> f497
+  f501 --> f494
+  f501 --> f498
+  f501 --> f491
+  f501 --> f500
+  f501 --> f499
+  f495 --> f489
+  f494 --> f488
+  f498 --> f489
+  f503 --> f501
+  f503 --> f502
+  f488 --> f488
+  f508 -. reference .-> f506
+  f508 -. reference .-> f505
+  f508 --> f507
+  f510 -. reference .-> f509
+  f509 -. reference .-> f527
+  f509 --> f540
+  f527 -. reference .-> f526
+  f527 --> f520
+  f515 --> f512
+  f526 -. reference .-> f510
+  f526 --> f540
+  f523 --> f515
+  f523 --> f517
+  f521 --> f517
+  f521 --> f514
+  f522 --> f517
+  f522 --> f514
+  f517 --> f516
+  f517 --> f513
+  f524 --> f523
+  f524 --> f521
+  f524 --> f522
+  f524 --> f518
+  f513 --> f512
+  f525 --> f523
+  f525 --> f521
+  f525 --> f522
+  f525 --> f518
+  f525 --> f519
+  f514 --> f512
+  f532 --> f511
+  f532 --> f528
+  f531 --> f510
+  f531 --> f527

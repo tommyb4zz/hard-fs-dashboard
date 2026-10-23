@@ -1,4 +1,12 @@
 /**
+<<<<<<< HEAD
+=======
+ * File purpose: Provide startup system-register initialization, oscillator-based core/bus
+ * clock recalculation and conditional external-memory/power-supply helpers for STM32H7.
+ */
+
+/**
+>>>>>>> yousef-dashboard
  ******************************************************************************
  * @file    system_stm32h7xx.c
  * @author  MCD Application Team
@@ -10,7 +18,11 @@
  *                      before branch to main program. This call is made inside
  *                      the "startup_stm32h7xx.s" file.
  *
+<<<<<<< HEAD
  *      - SystemCoreClock variable: Contains the core clock (HCLK), it can be used
+=======
+ *      - SystemCoreClock variable: Contains the CM7 core clock, it can be used
+>>>>>>> yousef-dashboard
  *                                  by the user application to setup the SysTick
  *                                  timer or configure other parameters.
  *
@@ -126,6 +138,14 @@ const uint8_t D1CorePrescTable[16] = {0, 0, 0, 0, 1, 2, 3, 4, 1, 2, 3, 4, 6, 7, 
  * @{
  */
 #if defined(DATA_IN_ExtSDRAM)
+<<<<<<< HEAD
+=======
+/**
+ * Conditional early-startup helper for DATA_IN_ExtSDRAM: configure FMC GPIOs and SDRAM
+ * registers, issue initialization commands with bounded busy waits and program the refresh
+ * rate; no result is returned.
+ */
+>>>>>>> yousef-dashboard
 static void SystemInit_ExtMemCtl(void);
 #endif /* DATA_IN_ExtSDRAM */
 
@@ -144,6 +164,23 @@ static void SystemInit_ExtMemCtl(void);
  * @param  None
  * @retval None
  */
+<<<<<<< HEAD
+=======
+/**
+ * CMSIS reset-time register initialization, called by assembly before the C runtime copies
+ * .data or clears .bss. Takes no arguments and supplies no error result.
+ *
+ * Enable FPU access when compiled for an FPU, restore RCC clock registers to the source's reset
+ * defaults, disable RCC interrupts and apply the revision-Y AXI workaround selected by DBGMCU
+ * IDCODE. Temporarily clock FMC to disable its reset-enabled bank when necessary, limiting
+ * speculative accesses according to the retained vendor code.
+ *
+ * Conditional DATA_IN_D2_SRAM enables those SRAM clocks; DATA_IN_ExtSDRAM invokes the early
+ * memory helper; VECT_TAB_SRAM chooses SRAM vector relocation, otherwise VTOR uses internal
+ * flash plus VECT_TAB_OFFSET. This routine must not depend on initialized application globals
+ * and does not choose the later PLL/LDO configuration in main.
+ */
+>>>>>>> yousef-dashboard
 void SystemInit(void) {
 #if defined(DATA_IN_D2_SRAM)
   __IO uint32_t tmpreg;
@@ -278,6 +315,21 @@ void SystemInit(void) {
  * @param  None
  * @retval None
  */
+<<<<<<< HEAD
+=======
+/**
+ * Refresh SystemCoreClock and SystemD2Clock in hertz from current RCC register selections; this
+ * function reads hardware and updates two software globals, not the clock tree itself.
+ *
+ * Choose HSI, CSI, HSE or PLL1; for PLL1 reconstruct the multiplier, optional fractional
+ * contribution, input divider and P divider. A zero PLL M divider yields zero rather than
+ * division by zero. Apply D1 core and AHB prescalers through D1CorePrescTable.
+ *
+ * Accuracy depends on HSI_VALUE/CSI_VALUE/HSE_VALUE matching their real sources. No external
+ * measurement or HAL error status is performed; callers must invoke an update after clock
+ * changes when their timing code uses these globals.
+ */
+>>>>>>> yousef-dashboard
 void SystemCoreClockUpdate(void) {
   uint32_t pllp, pllsource, pllm, pllfracen, hsivalue, tmp;
   float_t fracn1, pllvco;
@@ -301,7 +353,11 @@ void SystemCoreClockUpdate(void) {
   case RCC_CFGR_SWS_PLL1: /* PLL1 used as system clock  source */
 
     /* PLL_VCO = (HSE_VALUE or HSI_VALUE or CSI_VALUE/ PLLM) * PLLN
+<<<<<<< HEAD
     SYSCLK = PLL_VCO / PLLR
+=======
+    SYSCLK = PLL_VCO / PLLP
+>>>>>>> yousef-dashboard
     */
     pllsource = (RCC->PLLCKSELR & RCC_PLLCKSELR_PLLSRC);
     pllm = ((RCC->PLLCKSELR & RCC_PLLCKSELR_DIVM1) >> 4);
@@ -369,6 +425,24 @@ void SystemCoreClockUpdate(void) {
  * @param  None
  * @retval None
  */
+<<<<<<< HEAD
+=======
+/**
+ * Optional early SDRAM initialization compiled for DATA_IN_ExtSDRAM. It exists so external
+ * memory can be accessible before C runtime data initialization, rather than as the normal
+ * LCD/BSP initialization path.
+ *
+ * Write fixed FMC alternate-function GPIO settings, SDRAM bank/timing registers, command
+ * sequence and refresh count directly; command busy waits use countdowns and the initial delay
+ * is a loop count rather than a calibrated millisecond delay. Enable the controller and discard
+ * the temporary RCC-read variable.
+ *
+ * No parameter selects a fitted memory part, and expiration of a command wait is not reported.
+ * These retained register constants must not be interpreted as a verified profile for every
+ * MB1381 revision; the current build does not enable the optional DATA_IN_ExtSDRAM define in
+ * this file.
+ */
+>>>>>>> yousef-dashboard
 void SystemInit_ExtMemCtl(void) {
   __IO uint32_t tmp = 0;
   register uint32_t tmpreg = 0, timeout = 0xFFFF;
@@ -536,6 +610,21 @@ void SystemInit_ExtMemCtl(void) {
  * @param  None
  * @retval None
  */
+<<<<<<< HEAD
+=======
+/**
+ * Select one of the vendor startup supply modes using compile-time USE_PWR_* and SMPS defines.
+ * With no matching selection the function performs no supply change.
+ *
+ * Depending on the selected branch, update PWR CR3 for LDO, bypass or an SMPS/LDO combination,
+ * then wait until ACTVOSRDY is set. The readiness waits have no timeout and no returned failure
+ * indicator.
+ *
+ * This conditional helper is separate from main's checked
+ * HAL_PWREx_ConfigSupply(PWR_LDO_SUPPLY) path. Merely having its definition in the inventory
+ * does not establish that this build executes it.
+ */
+>>>>>>> yousef-dashboard
 void ExitRun0Mode(void) {
 #if defined(USE_PWR_LDO_SUPPLY)
 #  if defined(SMPS)

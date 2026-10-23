@@ -144,6 +144,7 @@ int32_t BSP_QSPI_Init(uint32_t Instance, BSP_QSPI_Init_t *Init)
         if(MX_QSPI_Init(&hqspi, &qspi_init) != HAL_OK)
         {
           ret = BSP_ERROR_PERIPH_FAILURE;
+<<<<<<< HEAD
         }/* QSPI memory reset */
         else if(QSPI_ResetMemory(Instance) != BSP_ERROR_NONE)
         {
@@ -163,6 +164,43 @@ int32_t BSP_QSPI_Init(uint32_t Instance, BSP_QSPI_Init_t *Init)
         }
         else
         {
+=======
+        }
+        else
+        {
+          HAL_Delay(2);
+        }/* QSPI memory reset */
+        if(ret == BSP_ERROR_NONE)
+        {
+          /* QSPI memory reset */
+          if(QSPI_ResetMemory(Instance) != BSP_ERROR_NONE)
+          {
+            ret = BSP_ERROR_COMPONENT_FAILURE;
+          }
+        }
+        if(ret == BSP_ERROR_NONE)
+        {
+          HAL_Delay(2);
+        }/* Force Flash enter 4 Byte address mode */
+        if((ret == BSP_ERROR_NONE) && (MT25TL01G_AutoPollingMemReady(&hqspi, QSPI_Ctx[Instance].InterfaceMode) != MT25TL01G_OK))
+        {
+          ret = BSP_ERROR_COMPONENT_FAILURE;
+        }
+        if((ret == BSP_ERROR_NONE) && (MT25TL01G_Enter4BytesAddressMode(&hqspi, QSPI_Ctx[Instance].InterfaceMode) != MT25TL01G_OK))
+        {
+          ret = BSP_ERROR_COMPONENT_FAILURE;
+        }
+        if(ret == BSP_ERROR_NONE)
+        {
+          HAL_Delay(1);
+        }/* Configuration of the dummy cycles on QSPI memory side */
+        if((ret == BSP_ERROR_NONE) && (QSPI_DummyCyclesCfg(Instance) != BSP_ERROR_NONE))
+        {
+          ret = BSP_ERROR_COMPONENT_FAILURE;
+        }
+        if(ret == BSP_ERROR_NONE)
+        {
+>>>>>>> yousef-dashboard
           /* Configure Flash to desired mode */
           if(BSP_QSPI_ConfigFlash(Instance, Init->InterfaceMode, Init->TransferRate) != BSP_ERROR_NONE)
           {
@@ -812,6 +850,10 @@ static void QSPI_MspInit(QSPI_HandleTypeDef *hQspi)
   /* Reset the QuadSPI memory interface */
   QSPI_FORCE_RESET();
   QSPI_RELEASE_RESET();
+<<<<<<< HEAD
+=======
+  HAL_Delay(1);
+>>>>>>> yousef-dashboard
   /* Enable GPIO clocks */
   QSPI_CLK_GPIO_CLK_ENABLE();
   QSPI_BK1_CS_GPIO_CLK_ENABLE();
@@ -930,6 +972,7 @@ static void QSPI_MspDeInit(QSPI_HandleTypeDef *hQspi)
 static int32_t QSPI_ResetMemory(uint32_t Instance)
 {
   int32_t ret = BSP_ERROR_NONE;
+<<<<<<< HEAD
 
   /* Send RESET ENABLE command in QPI mode (QUAD I/Os, 4-4-4) */
   if(MT25TL01G_ResetEnable(&hqspi, MT25TL01G_QPI_MODE) != MT25TL01G_OK)
@@ -961,6 +1004,39 @@ static int32_t QSPI_ResetMemory(uint32_t Instance)
   }
 
   /* Return BSP status */
+=======
+  uint32_t attempt;
+
+  for(attempt = 0; attempt < 2U; attempt++)
+  {
+    /*
+     * After a cold power cycle the NOR flash can come up in a state that does
+     * not answer cleanly to the first reset path. Try both QPI and SPI reset
+     * sequences, then verify readiness in default SPI/STR mode.
+     */
+    (void)MT25TL01G_ResetEnable(&hqspi, MT25TL01G_QPI_MODE);
+    (void)MT25TL01G_ResetMemory(&hqspi, MT25TL01G_QPI_MODE);
+    HAL_Delay(1);
+
+    (void)MT25TL01G_ResetEnable(&hqspi, BSP_QSPI_SPI_MODE);
+    (void)MT25TL01G_ResetMemory(&hqspi, BSP_QSPI_SPI_MODE);
+    HAL_Delay(2);
+
+    QSPI_Ctx[Instance].IsInitialized = QSPI_ACCESS_INDIRECT;  /* After reset S/W setting to indirect access   */
+    QSPI_Ctx[Instance].InterfaceMode = BSP_QSPI_SPI_MODE;     /* After reset H/W back to SPI mode by default  */
+    QSPI_Ctx[Instance].TransferRate  = BSP_QSPI_STR_TRANSFER; /* After reset S/W setting to STR mode          */
+    QSPI_Ctx[Instance].DualFlashMode = QSPI_DUALFLASH_ENABLE;
+
+    if(MT25TL01G_AutoPollingMemReady(&hqspi, BSP_QSPI_SPI_MODE) == MT25TL01G_OK)
+    {
+      return BSP_ERROR_NONE;
+    }
+
+    HAL_Delay(5);
+  }
+
+  ret = BSP_ERROR_COMPONENT_FAILURE;
+>>>>>>> yousef-dashboard
   return ret;
 }
 

@@ -1,0 +1,53 @@
+{
+  "date": "2026-10-16",
+  "repository_root": "/Users/youseffarahat/Documents/hard-fs-dashboard",
+  "review_branch": "develop",
+  "run_summary": {
+    "duration_ms": 10000,
+    "steps": 1001,
+    "requests": 188,
+    "responses": 177,
+    "exported_records": 177,
+    "session_id": 1,
+    "captures": 101,
+    "output": "/Users/youseffarahat/Documents/hard-fs-dashboard/build/dashboard-review-20261016",
+    "scope": "production CAN/UI/loggers with virtual CAN and fake peripherals"
+  },
+  "deliverables": {
+    "dashboard-demo.html": {
+      "bytes": 3106152,
+      "sha256": "115f8fb75b6eb86606f6e978a49c17af24860c4c3bc15a8b2f4746cb8b93d561"
+    },
+    "user-inputs.json": {
+      "bytes": 1100,
+      "sha256": "4a18b71bd178f905c9c8bd8a7695195dcb9324f1e68335ccbcf79dd9e90cafa7"
+    }
+  },
+  "source_sha256": {
+    ".vscode/flash_board.sh": "b8cd267e83941634c80d4b7123597d4e898543ee5a6dddc22986f5697e6a0fea",
+    "Src/Lvgl_Porting/lvgl_port_lcd.c": "e3581b6c8937275f735cf3309912d865279a874205e3ab5037d8e04a064c7a6e",
+    "Src/Lvgl_Porting/lvgl_port_touchpad.c": "a72d19d831ce3fe67d3da7461e67e7510cad2dacd36f8c11df0e8e6b4351a4b6",
+    "Src/app_can.c": "704b4634bd6f3bb0bbb38e4251d00817b2aae3bf242a303cb797fed24204d57b",
+    "Src/app_can_config.c": "e9c7e84a5c9d5d3ab77544283d4d732bd9b832ee09a3dfb6244be6a32aeb70f9",
+    "Src/app_dashboard_ui.c": "a3547cd8092e2fba358103c75c436f750db0e44716a327018dbe9914e8ce0a75",
+    "Src/app_data_log.c": "ae6e2f4c1acdb320f1f9f60f520b4df9f20f148c1ddb015e3afa933e621d24d2",
+    "Src/app_emmc_log.c": "9c49ea58bbd801e9c48f7a8c202a3a1200da5953693b2536c5658e936e3bcd0d",
+    "Src/app_tasks.c": "a6aa7e62cad18f820ba2c23381f74187649e24d49ef7f121f06df68932934e78",
+    "Src/main.c": "328d7f98e1591ba82d3f3cd60fe9a4466690ad1871644ce9bddf55152575be4b",
+    "build/dashboard-review-20261016/scenario.json": "4a18b71bd178f905c9c8bd8a7695195dcb9324f1e68335ccbcf79dd9e90cafa7",
+    "build/dashboard-review-20261016/snapshots.jsonl": "27679a68e82de8616717a8dcda42c5e6d40feb94780daa00855a930f317ebac7",
+    "build/dashboard-review-20261016/summary.json": "b173e96559ceca541ae8152544ac844ce1278b99bc78ea65eb33a9dc6e34d33a",
+    "dump_emmc_bin.py": "e02e50992d0d71f182f9fbd1658a0def63632f3e6945eeaedbc3ee4f88b9943b",
+    "tests/dashboard_ui/test_binding.c": "56b32eeb4d57c07faf00c2972c25fd88c391f876ed08660875ebb601650f1415",
+    "tests/test_dashboard_sim.py": "8b28819e646db9cbb83dc96fb13b9b2ecd315d603d9f89db68937ff8d3e46344",
+    "tools/can_sim/engine.py": "d9a4d9183b1e475a4cd85ac804e47d7ddb3e8a70f0a8e056abed1ab122f8d81f",
+    "tools/can_sim/protocol.py": "fe60e91bcde6bc57ca8e50375e7f8afd599dd9edba4503fb86cb14359f883c7d",
+    "tools/can_sim/scenario.py": "0c2435503c8bb319b24e5a977d9ee818da618573b2010a87d53de10fb9534fa6",
+    "tools/can_sim/scenarios/dashboard.json": "300db8382afa9010fe86dadcb6126825d01355cb179fad3afcbceaeb5f7678e1",
+    "tools/dashboard_host/main.c": "2f913dcc92e3357e7e5108d27f6608393f21ee4e964797bf701a2fd510ffda62",
+    "tools/dashboard_host/render.c": "b76cf9fc3b25ef2164277cc277e19944d1acff0763fbad04f3b70fc87d10f52f",
+    "tools/dashboard_sim/__main__.py": "7e65fe5368617d8bbe36a3a685713118de4236383974c1a18469689339aa2cc5",
+    "tools/dashboard_sim/runner.py": "9e69859d003752a60759506ab76c12530862db05ad063472add86ae2f8f9ecf3",
+    "ui/screens/ui_MainScreen.c": "4596b434ce85d03bf986278cef8705973162ed7bff7df8a1938873c30fcb6505"
+  }
+}

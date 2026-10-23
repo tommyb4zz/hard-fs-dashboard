@@ -1,0 +1,8 @@
+# Purpose: Reproduce the function-documentation parser and source formatting tools.
+# CAN runtime/test dependencies are declared separately in tools/can_sim/.
+tree-sitter==0.23.2
+tree-sitter-c==0.23.0
+tree-sitter-javascript==0.23.1
+clang-format==17.0.6
+pre-commit==4.3.0
+cmake==4.4.4

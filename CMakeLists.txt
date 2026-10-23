@@ -111,7 +111,11 @@ set(common_compile_options
 )
 
 set(FREERTOS_PACK_DIR
+<<<<<<< HEAD
     "${CMAKE_CURRENT_SOURCE_DIR}/Middleware/FreeRTOS-Kernel"
+=======
+    "$ENV{HOME}/Library/Application Support/stm32cube/packs/STMicroelectronics/freertos/2.0.0"
+>>>>>>> yousef-dashboard
     CACHE PATH
     "Path to the ST FreeRTOS pack")
 

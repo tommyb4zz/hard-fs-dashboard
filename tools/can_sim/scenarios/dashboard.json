@@ -1,0 +1,505 @@
+{
+  "version": 1,
+  "duration": 20,
+  "signals": {
+    "pack_voltage_v": {
+      "interpolation": "linear",
+      "points": [
+        {
+          "t": 0,
+          "value": 350
+        },
+        {
+          "t": 10,
+          "value": 330
+        },
+        {
+          "t": 20,
+          "value": 350
+        }
+      ]
+    },
+    "pack_summed_voltage_v": 350.12,
+    "pack_current_a": {
+      "interpolation": "linear",
+      "points": [
+        {
+          "t": 0,
+          "value": 0
+        },
+        {
+          "t": 5,
+          "value": 120
+        },
+        {
+          "t": 10,
+          "value": -30
+        },
+        {
+          "t": 15,
+          "value": 80
+        },
+        {
+          "t": 20,
+          "value": 0
+        }
+      ]
+    },
+    "pack_soc_pct": {
+      "interpolation": "linear",
+      "points": [
+        {
+          "t": 0,
+          "value": 90
+        },
+        {
+          "t": 20,
+          "value": 75
+        }
+      ]
+    },
+    "highest_temperature_c": 45,
+    "lowest_temperature_c": 20,
+    "average_temperature_c": 30,
+    "lowest_cell_voltage_v": 3.4,
+    "highest_cell_voltage_v": 4.1,
+    "average_cell_voltage_v": 3.7
+  },
+  "faults": [
+    {
+      "start": 2,
+      "end": 3,
+      "type": "pause"
+    },
+    {
+      "start": 4,
+      "end": 5,
+      "type": "drop",
+      "every": 2
+    },
+    {
+      "start": 5,
+      "end": 6,
+      "type": "delay",
+      "seconds": 0.15
+    },
+    {
+      "start": 6,
+      "end": 7,
+      "type": "wrong_id",
+      "id": "0x123"
+    },
+    {
+      "start": 7,
+      "end": 8,
+      "type": "wrong_service",
+      "service": "0x7F"
+    },
+    {
+      "start": 8,
+      "end": 9,
+      "type": "wrong_pci",
+      "pci": "0x25"
+    },
+    {
+      "start": 9,
+      "end": 10,
+      "type": "short_dlc",
+      "dlc": 3
+    },
+    {
+      "start": 10,
+      "end": 11,
+      "type": "unknown_pid",
+      "pid": "0xFFFF"
+    },
+    {
+      "start": 11,
+      "end": 12,
+      "type": "duplicate",
+      "count": 2,
+      "spacing": 0.01
+    },
+    {
+      "start": 12,
+      "end": 13,
+      "type": "burst",
+      "count": 32
+    },
+    {
+      "start": 14,
+      "end": 15,
+      "type": "raw",
+      "signal": "pack_current_a",
+      "value": 65535
+    },
+    {
+      "start": 15,
+      "end": 16,
+      "type": "raw",
+      "signal": "pack_soc_pct",
+      "value": 255
+    }
+  ],
+  "auxiliary": {
+    "speed_kph": {
+      "interpolation": "linear",
+      "points": [
+        {
+          "t": 0,
+          "value": 0
+        },
+        {
+          "t": 2,
+          "value": 40
+        },
+        {
+          "t": 5,
+          "value": 100
+        },
+        {
+          "t": 8,
+          "value": 0
+        },
+        {
+          "t": 12,
+          "value": 150
+        },
+        {
+          "t": 16,
+          "value": 0
+        },
+        {
+          "t": 20,
+          "value": 0
+        }
+      ]
+    },
+    "drive_mode": {
+      "interpolation": "step",
+      "points": [
+        {
+          "t": 0,
+          "value": "N"
+        },
+        {
+          "t": 1,
+          "value": "D"
+        },
+        {
+          "t": 9,
+          "value": "R"
+        },
+        {
+          "t": 11,
+          "value": "N"
+        },
+        {
+          "t": 12,
+          "value": "D"
+        },
+        {
+          "t": 16,
+          "value": "N"
+        },
+        {
+          "t": 17,
+          "value": null
+        },
+        {
+          "t": 18,
+          "value": "D"
+        }
+      ]
+    },
+    "statuses": {
+      "imd": {
+        "interpolation": "step",
+        "points": [
+          {
+            "t": 0,
+            "value": "unknown"
+          },
+          {
+            "t": 0.5,
+            "value": "ok"
+          },
+          {
+            "t": 2,
+            "value": "unknown"
+          },
+          {
+            "t": 3,
+            "value": "ok"
+          },
+          {
+            "t": 4,
+            "value": "fault"
+          },
+          {
+            "t": 5,
+            "value": "ok"
+          },
+          {
+            "t": 14,
+            "value": "fault"
+          },
+          {
+            "t": 15,
+            "value": "unknown"
+          },
+          {
+            "t": 16,
+            "value": "ok"
+          }
+        ]
+      },
+      "fault": {
+        "interpolation": "step",
+        "points": [
+          {
+            "t": 0,
+            "value": "unknown"
+          },
+          {
+            "t": 0.5,
+            "value": "ok"
+          },
+          {
+            "t": 2,
+            "value": "unknown"
+          },
+          {
+            "t": 3,
+            "value": "ok"
+          },
+          {
+            "t": 5,
+            "value": "fault"
+          },
+          {
+            "t": 6,
+            "value": "ok"
+          },
+          {
+            "t": 14,
+            "value": "fault"
+          },
+          {
+            "t": 15,
+            "value": "unknown"
+          },
+          {
+            "t": 16,
+            "value": "ok"
+          }
+        ]
+      },
+      "rtd": {
+        "interpolation": "step",
+        "points": [
+          {
+            "t": 0,
+            "value": "unknown"
+          },
+          {
+            "t": 0.5,
+            "value": "ok"
+          },
+          {
+            "t": 2,
+            "value": "unknown"
+          },
+          {
+            "t": 3,
+            "value": "ok"
+          },
+          {
+            "t": 6,
+            "value": "fault"
+          },
+          {
+            "t": 7,
+            "value": "ok"
+          },
+          {
+            "t": 14,
+            "value": "fault"
+          },
+          {
+            "t": 15,
+            "value": "unknown"
+          },
+          {
+            "t": 16,
+            "value": "ok"
+          }
+        ]
+      },
+      "tsal": {
+        "interpolation": "step",
+        "points": [
+          {
+            "t": 0,
+            "value": "unknown"
+          },
+          {
+            "t": 0.5,
+            "value": "ok"
+          },
+          {
+            "t": 2,
+            "value": "unknown"
+          },
+          {
+            "t": 3,
+            "value": "ok"
+          },
+          {
+            "t": 7,
+            "value": "fault"
+          },
+          {
+            "t": 8,
+            "value": "ok"
+          },
+          {
+            "t": 14,
+            "value": "fault"
+          },
+          {
+            "t": 15,
+            "value": "unknown"
+          },
+          {
+            "t": 16,
+            "value": "ok"
+          }
+        ]
+      },
+      "bspd": {
+        "interpolation": "step",
+        "points": [
+          {
+            "t": 0,
+            "value": "unknown"
+          },
+          {
+            "t": 0.5,
+            "value": "ok"
+          },
+          {
+            "t": 2,
+            "value": "unknown"
+          },
+          {
+            "t": 3,
+            "value": "ok"
+          },
+          {
+            "t": 8,
+            "value": "fault"
+          },
+          {
+            "t": 9,
+            "value": "ok"
+          },
+          {
+            "t": 14,
+            "value": "fault"
+          },
+          {
+            "t": 15,
+            "value": "unknown"
+          },
+          {
+            "t": 16,
+            "value": "ok"
+          }
+        ]
+      },
+      "sdc": {
+        "interpolation": "step",
+        "points": [
+          {
+            "t": 0,
+            "value": "unknown"
+          },
+          {
+            "t": 0.5,
+            "value": "ok"
+          },
+          {
+            "t": 2,
+            "value": "unknown"
+          },
+          {
+            "t": 3,
+            "value": "ok"
+          },
+          {
+            "t": 9,
+            "value": "fault"
+          },
+          {
+            "t": 10,
+            "value": "ok"
+          },
+          {
+            "t": 14,
+            "value": "fault"
+          },
+          {
+            "t": 15,
+            "value": "unknown"
+          },
+          {
+            "t": 16,
+            "value": "ok"
+          }
+        ]
+      },
+      "ready_to_drive": {
+        "interpolation": "step",
+        "points": [
+          {
+            "t": 0,
+            "value": "unknown"
+          },
+          {
+            "t": 0.5,
+            "value": "ok"
+          },
+          {
+            "t": 2,
+            "value": "unknown"
+          },
+          {
+            "t": 3,
+            "value": "ok"
+          },
+          {
+            "t": 10,
+            "value": "fault"
+          },
+          {
+            "t": 11,
+            "value": "ok"
+          },
+          {
+            "t": 14,
+            "value": "fault"
+          },
+          {
+            "t": 15,
+            "value": "unknown"
+          },
+          {
+            "t": 16,
+            "value": "ok"
+          }
+        ]
+      }
+    }
+  }
+}
