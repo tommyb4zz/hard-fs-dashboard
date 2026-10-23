@@ -49,7 +49,7 @@ static int32_t app_ui_slider_from_temperature(int8_t temperature_c) {
   }
 
   return temperature_c;
-}
+} /* TODO: we should diagnose the fauults and store them in an append only file
 
 /**
  * Round the magnitude of current in deciamps to whole amps and clamp it to the UI slider
