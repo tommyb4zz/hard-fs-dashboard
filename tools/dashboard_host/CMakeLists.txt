@@ -14,7 +14,7 @@ add_library(lvgl STATIC ${DASHBOARD_LVGL_SOURCES})
 target_include_directories(lvgl SYSTEM PUBLIC "${DASHBOARD_ROOT}" "${DASHBOARD_ROOT}/lvgl")
 target_compile_definitions(lvgl PUBLIC LV_LVGL_H_INCLUDE_SIMPLE LV_CONF_INCLUDE_SIMPLE)
 add_subdirectory("${DASHBOARD_ROOT}/ui" "${CMAKE_CURRENT_BINARY_DIR}/ui")
-target_include_directories(ui PRIVATE "${DASHBOARD_ROOT}")
+target_include_directories(ui PRIVATE "${DASHBOARD_ROOT}" "${DASHBOARD_ROOT}/Inc")
 target_link_libraries(ui PUBLIC lvgl)
 
 # Production algorithms are compiled directly. Host include ordering supplies fake HAL,
@@ -25,7 +25,8 @@ add_executable(dashboard_host
     "${DASHBOARD_ROOT}/Src/app_can_config.c"
     "${DASHBOARD_ROOT}/Src/app_data_log.c"
     "${DASHBOARD_ROOT}/Src/app_emmc_log.c"
-    "${DASHBOARD_ROOT}/Src/app_dashboard_ui.c")
+    "${DASHBOARD_ROOT}/Src/app_dashboard_ui.c"
+    "${DASHBOARD_ROOT}/Src/app_fault_history.c")
 target_include_directories(dashboard_host PRIVATE
     include "${DASHBOARD_ROOT}/tests/can_host/include"
     "${DASHBOARD_ROOT}/Inc" "${DASHBOARD_ROOT}" "${DASHBOARD_ROOT}/ui")
@@ -46,7 +47,8 @@ endif()
 enable_testing()
 add_executable(dashboard_ui_tests
     "${DASHBOARD_ROOT}/tests/dashboard_ui/test_binding.c"
-    render.c "${DASHBOARD_ROOT}/Src/app_dashboard_ui.c")
+    render.c "${DASHBOARD_ROOT}/Src/app_dashboard_ui.c"
+    "${DASHBOARD_ROOT}/Src/app_fault_history.c")
 target_include_directories(dashboard_ui_tests PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}" "${DASHBOARD_ROOT}/Inc" "${DASHBOARD_ROOT}")
 target_compile_options(dashboard_ui_tests PRIVATE -Wall -Wextra -Werror -Wpedantic -UNDEBUG)

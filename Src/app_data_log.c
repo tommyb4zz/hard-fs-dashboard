@@ -83,7 +83,9 @@ void app_data_log_record(uint32_t timestamp_ms, const app_can_dashboard_data_t *
 
   taskENTER_CRITICAL();
   app_data_log_state.samples[app_data_log_state.head].timestamp_ms = timestamp_ms;
-  app_data_log_state.samples[app_data_log_state.head].dashboard_data = *data;
+  memcpy(&app_data_log_state.samples[app_data_log_state.head].dashboard_data,
+         data,
+         sizeof(app_can_measurements_t));
   app_data_log_state.head = (app_data_log_state.head + 1U) % APP_DATA_LOG_CAPACITY;
 
   if (app_data_log_state.count < APP_DATA_LOG_CAPACITY) {

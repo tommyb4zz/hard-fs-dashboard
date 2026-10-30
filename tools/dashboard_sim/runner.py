@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 from pathlib import Path
 import select
 import shutil
@@ -59,7 +60,7 @@ class Host:
     process/sanitizer diagnostics. Context exit closes and checks that process.
     """
 
-    def __init__(self, executable: Path):
+    def __init__(self, executable: Path, storage_file: Path | None = None):
         """Start one persistent C host process and reserve its diagnostic stream.
 
         Executable is the compiled host Path. Open text stdin/stdout pipes and a temporary
@@ -68,8 +69,11 @@ class Host:
         error file and re-raise. Hardware peripherals are implemented by the host adapter."""
         self.errors = tempfile.TemporaryFile(mode="w+")
         try:
+            environment = os.environ.copy()
+            if storage_file is not None:
+                environment["DASHBOARD_STORAGE_FILE"] = str(storage_file.resolve())
             self.process = subprocess.Popen([str(executable)], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                            stderr=self.errors, text=True, bufsize=1)
+                                            stderr=self.errors, text=True, bufsize=1, env=environment)
         except BaseException:
             self.errors.close()
             raise
@@ -319,8 +323,18 @@ def run_scenario(scenario: Scenario, output: Path, executable: Path, *, step_ms:
                 png = output / (basename + ".png")
                 host.artifact("P", ppm)
                 ppm_to_png(ppm, png)
-                captures.append({"tick_ms": tick, "image": png.name, "state": record})
+                views = {"main": png.name}
+                for view in ("debug", "pack", "faults"):
+                    host.command("S " + view)
+                    view_ppm = output / f"{basename}-{view}.ppm"
+                    view_png = output / f"{basename}-{view}.png"
+                    host.artifact("P", view_ppm)
+                    ppm_to_png(view_ppm, view_png)
+                    views[view] = view_png.name
+                host.command("S main")
+                captures.append({"tick_ms": tick, "image": png.name, "views": views, "state": record})
         host.artifact("E", output / "log.bin")
+        host.artifact("H", output / "fault-history.csv")
     # Validate the actual production C wire export rather than constructing Python rows.
     with (output / "log.bin").open("rb") as stream:
         header, rows = read_dump(stream)

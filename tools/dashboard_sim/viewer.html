@@ -50,6 +50,8 @@
         <label class="time-label" for="time"><span>Playback time</span><output id="playhead">0.000 s</output></label>
         <input id="time" type="range" min="0" max="0" step="1" value="0" aria-label="Playback time in milliseconds">
         <div class="buttons">
+          <label for="view">Screen</label>
+          <select id="view"><option value="main">Dashboard</option><option value="debug">Cells / current</option><option value="pack">Pack / storage</option><option value="faults">Malfunction history</option></select>
           <button id="play" type="button">Play</button>
           <button id="replay" type="button">Replay</button>
           <label for="speed">Speed</label>
@@ -63,7 +65,7 @@
       <details open><summary>Decoded state of the shown screen</summary><pre id="state"></pre></details>
     </aside>
   </div>
-  <p class="links"><a href="scenario.json">Scenario inputs</a> · <a href="snapshots.jsonl">All decoded snapshots</a> · <a href="log.csv">Validated exported records</a></p>
+  <p class="links"><a href="scenario.json">Scenario inputs</a> · <a href="snapshots.jsonl">All decoded snapshots</a> · <a href="log.csv">Validated exported records</a> · <a href="fault-history.csv">Malfunction history CSV</a></p>
   <p class="links">Playback uses captured images without interpolating pixels. This host run does not exercise physical hardware or FreeRTOS scheduling.</p>
 </main>
 <script>

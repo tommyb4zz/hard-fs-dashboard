@@ -377,3 +377,29 @@ test("reduced motion starts paused and controls dispatch playback changes", func
   assert.equal(playback.getState().position_ms, 0);
   playback.pause();
 });
+
+/* Screen selection must reload the same timestamp and ignore an obsolete view completion. */
+test("screen changes keep one timestamp and reject older view loads", function screenSelection() {
+  const browser = fakeBrowser({ reducedMotion: true });
+  const Element = browser.nodes.get("speed").constructor;
+  const select = new Element("view");
+  browser.nodes.set("view", select);
+  select.value = "main";
+  const items = captures().map(item => ({...item, views: {
+    main: item.image, debug: "debug-" + item.image, faults: "faults-" + item.image
+  }}));
+  const playback = mountPlayback(items, browser.document, browser.window);
+  const old = browser.images.at(-1);
+  select.value = "debug";
+  select.dispatch("change");
+  browser.images.at(-1).load();
+  assert.equal(browser.nodes.get("frame").src, "debug-frame-0.png");
+  old.load();
+  assert.equal(browser.nodes.get("frame").src, "debug-frame-0.png");
+  select.value = "faults";
+  select.dispatch("change");
+  browser.images.at(-1).load();
+  assert.equal(browser.nodes.get("frame").src, "faults-frame-0.png");
+  assert.equal(playback.getState().position_ms, 0);
+  playback.pause();
+});

@@ -33,14 +33,23 @@
 #define APP_EMMC_LOG_DUMP_RECORD_SIZE 42U
 #define APP_EMMC_LOG_DUMP_FOOTER_SIZE 16U
 
+#define APP_FAULT_JOURNAL_START (APP_EMMC_LOG_START_BLOCK + APP_EMMC_LOG_RESERVED_BLOCKS)
+#define APP_FAULT_JOURNAL_SLOTS 4096U
+static uint32_t app_emmc_card_blocks;
+static bool app_emmc_io_failed;
+static uint32_t app_emmc_io_errors;
+static bool app_emmc_fault_wait_ready(void);
+
 static const uint8_t app_emmc_log_dump_header_magic[4] = {'H', 'F', 'D', 'B'};
 static const uint8_t app_emmc_log_dump_footer_magic[4] = {'H', 'F', 'D', 'E'};
 static const uint8_t app_emmc_log_dump_record_crc_valid_flag = 0x01U;
 
 /* Native storage layout includes ABI padding before crc32; it differs from 42-byte export. */
+_Static_assert(sizeof(app_can_measurements_t) == offsetof(app_can_dashboard_data_t, valid_mask),
+               "Telemetry storage prefix must retain its original layout");
 typedef struct {
   uint32_t timestamp_ms;
-  app_can_dashboard_data_t dashboard_data;
+  app_can_measurements_t dashboard_data;
   uint32_t crc32;
 } app_emmc_log_record_t;
 
@@ -281,9 +290,13 @@ static bool app_emmc_log_write_header_locked(void) {
 
   if (BSP_MMC_WriteBlocks(
           APP_EMMC_LOG_INSTANCE, header_block.words, APP_EMMC_LOG_START_BLOCK, 1U) !=
-      BSP_ERROR_NONE) {
+          BSP_ERROR_NONE ||
+      !app_emmc_fault_wait_ready()) {
+    app_emmc_io_failed = true;
+    app_emmc_io_errors++;
     return false;
   }
+  app_emmc_io_failed = false;
   app_emmc_log_header_dirty = false;
   return true;
 }
@@ -328,7 +341,10 @@ static bool app_emmc_log_flush_locked(void) {
   if (app_emmc_log_tail_block_written) {
     target_block--;
   }
-  if (BSP_MMC_WriteBlocks(APP_EMMC_LOG_INSTANCE, block.words, target_block, 1U) != BSP_ERROR_NONE) {
+  if (BSP_MMC_WriteBlocks(APP_EMMC_LOG_INSTANCE, block.words, target_block, 1U) != BSP_ERROR_NONE ||
+      !app_emmc_fault_wait_ready()) {
+    app_emmc_io_failed = true;
+    app_emmc_io_errors++;
     return false;
   }
 
@@ -471,6 +487,7 @@ static uint32_t app_emmc_log_pack_dump_record(uint8_t *buffer,
  * physical card identity.
  */
 bool app_emmc_log_init(void) {
+  app_emmc_card_blocks = 0U;
   BSP_MMC_CardInfo card_info = {0};
   app_emmc_log_block_t header_block = {0};
   uint32_t next_session_id = 1U;
@@ -504,6 +521,7 @@ bool app_emmc_log_init(void) {
     return false;
   }
 
+  app_emmc_card_blocks = card_info.LogBlockNbr;
   app_emmc_log_reserved_blocks = APP_EMMC_LOG_RESERVED_BLOCKS;
   if (APP_EMMC_LOG_START_BLOCK + app_emmc_log_reserved_blocks > card_info.LogBlockNbr) {
     app_emmc_log_reserved_blocks = card_info.LogBlockNbr - APP_EMMC_LOG_START_BLOCK;
@@ -566,7 +584,7 @@ bool app_emmc_log_append(uint32_t timestamp_ms, const app_can_dashboard_data_t *
   }
 
   record.timestamp_ms = timestamp_ms;
-  record.dashboard_data = *data;
+  memcpy(&record.dashboard_data, data, sizeof(record.dashboard_data));
   record.crc32 = app_emmc_log_record_crc32(&record);
 
   memcpy(&app_emmc_log_block_buffer.bytes[app_emmc_log_block_fill], &record, sizeof(record));
@@ -653,6 +671,8 @@ void app_emmc_log_get_status(app_emmc_log_status_t *status) {
   }
 
   status->ready = app_emmc_log_ready;
+  status->io_failed = app_emmc_io_failed;
+  status->io_errors = app_emmc_io_errors;
   status->overflow = app_emmc_log_overflow;
   status->session_id = app_emmc_log_session_id;
   status->record_count = app_emmc_log_record_count;
@@ -860,4 +880,92 @@ bool app_emmc_log_dump_binary(void) {
 
   app_emmc_log_unlock();
   return true;
+}
+
+/** Report separately reserved fault slots only after card discovery; never overlap telemetry. */
+uint32_t app_emmc_fault_capacity(void) {
+  return app_emmc_log_ready &&
+                 app_emmc_card_blocks >= APP_FAULT_JOURNAL_START + APP_FAULT_JOURNAL_SLOTS
+             ? APP_FAULT_JOURNAL_SLOTS
+             : 0U;
+}
+/** Decode a portable 28-byte checksummed event inside a dedicated 512-byte slot. */
+static int app_emmc_fault_decode(const uint8_t *bytes, app_fault_event_t *event) {
+  bool erased_ff = true, erased_zero = true;
+  for (unsigned i = 0; i < 512U; ++i) {
+    erased_ff = erased_ff && bytes[i] == 255U;
+    erased_zero = erased_zero && bytes[i] == 0U;
+  }
+  if (erased_ff || erased_zero)
+    return 0;
+  uint32_t values[7];
+  for (unsigned i = 0; i < 7U; ++i) {
+    unsigned j = i * 4U;
+    values[i] = (uint32_t)bytes[j] | ((uint32_t)bytes[j + 1] << 8U) |
+                ((uint32_t)bytes[j + 2] << 16U) | ((uint32_t)bytes[j + 3] << 24U);
+  }
+  if (values[0] != 0x314A4648U || values[6] != app_emmc_log_crc32_compute(bytes, 24U))
+    return -1;
+  *event = (app_fault_event_t){.sequence = values[1],
+                               .session_id = values[2],
+                               .timestamp_ms = values[3],
+                               .source = (uint16_t)values[4],
+                               .state = (uint8_t)(values[4] >> 16U),
+                               .detail = values[5]};
+  return 1;
+}
+/** Read a fault slot under the same mutex as telemetry; preserve corruption as an error. */
+int app_emmc_fault_read(uint32_t index, app_fault_event_t *event) {
+  if (event == NULL || index >= app_emmc_fault_capacity() || !app_emmc_log_lock())
+    return -1;
+  uint32_t block[128];
+  int result = -1;
+  if (app_emmc_fault_wait_ready() &&
+      BSP_MMC_ReadBlocks(0U, block, APP_FAULT_JOURNAL_START + index, 1U) == BSP_ERROR_NONE)
+    result = app_emmc_fault_decode((const uint8_t *)block, event);
+  app_emmc_log_unlock();
+  return result;
+}
+/** Wait until the card is transfer-ready; bounded polling prevents a permanent GUI stall. */
+static bool app_emmc_fault_wait_ready(void) {
+  for (unsigned attempt = 0; attempt < 100000U; ++attempt) {
+    int32_t state = BSP_MMC_GetCardState(0U);
+    if (state == MMC_TRANSFER_OK)
+      return true;
+    if (state != MMC_TRANSFER_BUSY)
+      return false;
+  }
+  return false;
+}
+/** Append without altering occupied bytes; verify a full-slot write before acknowledging it. */
+bool app_emmc_fault_write(uint32_t index, const app_fault_event_t *event) {
+  if (event == NULL || index >= app_emmc_fault_capacity() || !app_emmc_log_lock())
+    return false;
+  uint32_t block[128], check[128];
+  memset(block, 255, sizeof(block));
+  uint8_t *bytes = (uint8_t *)block;
+  uint32_t values[] = {0x314A4648U,
+                       event->sequence,
+                       event->session_id,
+                       event->timestamp_ms,
+                       (uint32_t)event->source | ((uint32_t)event->state << 16U),
+                       event->detail};
+  for (unsigned i = 0; i < 6U; ++i)
+    app_emmc_log_write_le32(bytes + 4U * i, values[i]);
+  app_emmc_log_write_le32(bytes + 24U, app_emmc_log_crc32_compute(bytes, 24U));
+  bool ok = app_emmc_fault_wait_ready() &&
+            BSP_MMC_ReadBlocks(0U, check, APP_FAULT_JOURNAL_START + index, 1U) == BSP_ERROR_NONE;
+  app_fault_event_t previous;
+  int occupied = ok ? app_emmc_fault_decode((const uint8_t *)check, &previous) : -1;
+  if (occupied == 1) {
+    ok = memcmp(block, check, sizeof(block)) == 0;
+  } else if (occupied == 0) {
+    ok = BSP_MMC_WriteBlocks(0U, block, APP_FAULT_JOURNAL_START + index, 1U) == BSP_ERROR_NONE &&
+         app_emmc_fault_wait_ready() &&
+         BSP_MMC_ReadBlocks(0U, check, APP_FAULT_JOURNAL_START + index, 1U) == BSP_ERROR_NONE &&
+         memcmp(block, check, sizeof(block)) == 0;
+  } else
+    ok = false;
+  app_emmc_log_unlock();
+  return ok;
 }

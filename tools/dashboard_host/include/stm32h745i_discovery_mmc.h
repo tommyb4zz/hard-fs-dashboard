@@ -1,7 +1,7 @@
 /* Purpose: define the fake 64-block eMMC region used for host log/export checks. */
 #ifndef DASHBOARD_HOST_MMC_H
-#define DASHBOARD_HOST_MMC_H
-#include "stm32h745i_discovery.h"
+#  define DASHBOARD_HOST_MMC_H
+#  include "stm32h745i_discovery.h"
 typedef struct {
   uint32_t LogBlockNbr;
 } BSP_MMC_CardInfo;
@@ -38,3 +38,7 @@ int32_t BSP_MMC_ReadBlocks(uint32_t instance, uint32_t *bytes, uint32_t block, u
  */
 int32_t BSP_MMC_WriteBlocks(uint32_t instance, uint32_t *bytes, uint32_t block, uint32_t count);
 #endif
+
+#define MMC_TRANSFER_OK 0U
+#define MMC_TRANSFER_BUSY 1U
+int32_t BSP_MMC_GetCardState(uint32_t instance);

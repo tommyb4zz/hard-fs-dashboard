@@ -57,6 +57,7 @@ void ui_init(void) {
 #endif
   ui_MainScreen_screen_init();
   ui_DebugScreen_screen_init();
+  ui_diagnostics_init();
   ui____initial_actions0 = lv_obj_create(NULL);
   lv_disp_load_scr(ui_MainScreen);
 }
@@ -70,6 +71,7 @@ void ui_init(void) {
  * and removes the display; this function does not shut down the LVGL core.
  */
 void ui_destroy(void) {
+  ui_diagnostics_destroy();
   ui_MainScreen_screen_destroy();
   ui_DebugScreen_screen_destroy();
 }

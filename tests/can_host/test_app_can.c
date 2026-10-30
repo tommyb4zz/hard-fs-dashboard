@@ -408,6 +408,148 @@ static bool test_all_pid_conversions(void) {
 }
 
 /**
+ * Distinguish an absent signal from a real zero and check the inclusive freshness limit.
+ * Invalid signal indices and null snapshots are never fresh; timestamps wrap as uint32.
+ */
+static bool test_signal_freshness_boundaries(void) {
+  app_can_dashboard_data_t data = {0};
+  CHECK(!app_can_signal_is_fresh(NULL, APP_CAN_SIGNAL_PACK_VOLTAGE, 0U));
+  CHECK(!app_can_signal_is_fresh(&data, APP_CAN_SIGNAL_PACK_VOLTAGE, 0U));
+  CHECK(!app_can_signal_is_fresh(&data, (app_can_signal_id_t)-1, 0U));
+  CHECK(!app_can_signal_is_fresh(&data, APP_CAN_SIGNAL_COUNT, 0U));
+
+  data.valid_mask = (uint16_t)(1U << APP_CAN_SIGNAL_PACK_VOLTAGE);
+  data.signal_tick_ms[APP_CAN_SIGNAL_PACK_VOLTAGE] = 0U;
+  CHECK(app_can_signal_is_fresh(&data, APP_CAN_SIGNAL_PACK_VOLTAGE, 0U));
+  CHECK(app_can_signal_is_fresh(&data, APP_CAN_SIGNAL_PACK_VOLTAGE, APP_CAN_STALE_MS));
+  CHECK(!app_can_signal_is_fresh(&data, APP_CAN_SIGNAL_PACK_VOLTAGE, APP_CAN_STALE_MS + 1U));
+  CHECK(!app_can_signal_is_fresh(&data, APP_CAN_SIGNAL_SOC, 0U));
+
+  data.signal_tick_ms[APP_CAN_SIGNAL_PACK_VOLTAGE] = UINT32_MAX - 25U;
+  CHECK(app_can_signal_is_fresh(&data, APP_CAN_SIGNAL_PACK_VOLTAGE, 24U));
+  CHECK(app_can_signal_is_fresh(&data, APP_CAN_SIGNAL_PACK_VOLTAGE, APP_CAN_STALE_MS - 26U));
+  CHECK(!app_can_signal_is_fresh(&data, APP_CAN_SIGNAL_PACK_VOLTAGE, APP_CAN_STALE_MS - 25U));
+  return true;
+}
+
+/**
+ * Accepted replies establish validity and stamp only their own signal, including zeros.
+ * The retained snapshot remains available on empty polls while its age becomes stale.
+ */
+static bool test_each_pid_has_independent_validity_and_age(void) {
+  static const struct {
+    uint16_t pid;
+    uint16_t raw_zero;
+    app_can_signal_id_t signal;
+  } samples[] = {
+      {APP_CAN_PID_PACK_VOLTAGE, 0U, APP_CAN_SIGNAL_PACK_VOLTAGE},
+      {APP_CAN_PID_PACK_SUMMED_VOLTAGE, 0U, APP_CAN_SIGNAL_PACK_SUMMED_VOLTAGE},
+      {APP_CAN_PID_PACK_CURRENT, 32767U, APP_CAN_SIGNAL_PACK_CURRENT},
+      {APP_CAN_PID_PACK_SOC, 0U, APP_CAN_SIGNAL_SOC},
+      {APP_CAN_PID_HIGHEST_TEMPERATURE, 0U, APP_CAN_SIGNAL_TEMP_HIGH},
+      {APP_CAN_PID_LOWEST_TEMPERATURE, 0U, APP_CAN_SIGNAL_TEMP_LOW},
+      {APP_CAN_PID_AVERAGE_TEMPERATURE, 0U, APP_CAN_SIGNAL_TEMP_AVG},
+      {APP_CAN_PID_LOWEST_CELL_VOLTAGE, 0U, APP_CAN_SIGNAL_CELL_LOW},
+      {APP_CAN_PID_HIGHEST_CELL_VOLTAGE, 0U, APP_CAN_SIGNAL_CELL_HIGH},
+      {APP_CAN_PID_AVERAGE_CELL_VOLTAGE, 0U, APP_CAN_SIGNAL_CELL_AVG},
+  };
+  reset_state();
+  CHECK(app_can_init());
+  app_can_dashboard_data_t data = {0};
+  uint16_t expected_mask = 0U;
+  uint32_t expected_ticks[APP_CAN_SIGNAL_COUNT] = {0};
+  for (unsigned i = 0; i < sizeof(samples) / sizeof(samples[0]); i++) {
+    fake_tick = i * 31U; /* The first valid zero arrives at timestamp zero. */
+    enqueue(response(samples[i].pid, samples[i].raw_zero));
+    CHECK(app_can_poll_dashboard_data(&data));
+    expected_mask |= (uint16_t)(1U << samples[i].signal);
+    expected_ticks[samples[i].signal] = fake_tick;
+    CHECK(data.valid_mask == expected_mask);
+    CHECK(app_can_signal_is_fresh(&data, samples[i].signal, fake_tick));
+    for (unsigned signal = 0; signal < APP_CAN_SIGNAL_COUNT; signal++) {
+      CHECK(data.signal_tick_ms[signal] == expected_ticks[signal]);
+    }
+  }
+  CHECK(data.pack_voltage_deci_volts == 0U);
+  CHECK(data.pack_current_deci_amps == 0);
+  CHECK(data.pack_state_of_charge == 0U);
+  CHECK(data.lowest_cell_voltage_100uv == 0U);
+
+  fake_tick = APP_CAN_STALE_MS + 1U;
+  data = (app_can_dashboard_data_t){0};
+  CHECK(!app_can_poll_dashboard_data(&data));
+  CHECK(data.valid_mask == expected_mask);
+  CHECK(!app_can_signal_is_fresh(&data, APP_CAN_SIGNAL_PACK_VOLTAGE, fake_tick));
+  CHECK(app_can_signal_is_fresh(&data, APP_CAN_SIGNAL_SOC, fake_tick));
+  CHECK(data.signal_tick_ms[APP_CAN_SIGNAL_PACK_VOLTAGE] == 0U);
+  return true;
+}
+
+/**
+ * Wrong ID/service/PCI/DLC/PID/frame metadata and HAL read errors never refresh a value.
+ * A later legitimate reply recovers only that signal after the old sample has expired.
+ */
+static bool test_invalid_replies_do_not_refresh_signal_age(void) {
+  reset_state();
+  CHECK(app_can_init());
+  app_can_dashboard_data_t data = {0};
+  fake_tick = 42U;
+  enqueue(response(APP_CAN_PID_PACK_VOLTAGE, 4000U));
+  CHECK(app_can_poll_dashboard_data(&data));
+  const uint16_t expected_mask = (uint16_t)(1U << APP_CAN_SIGNAL_PACK_VOLTAGE);
+  CHECK(data.valid_mask == expected_mask);
+
+  fake_tick += APP_CAN_STALE_MS + 1U;
+  for (unsigned mutation = 0; mutation < 8U; mutation++) {
+    fake_frame_t malformed = response(APP_CAN_PID_PACK_VOLTAGE, 4500U);
+    switch (mutation) {
+    case 0U:
+      malformed.header.Identifier = 0x123U;
+      break;
+    case 1U:
+      malformed.payload[1] = 0x7FU;
+      break;
+    case 2U:
+      malformed.payload[0] = 4U;
+      break;
+    case 3U:
+      malformed.header.DataLength = FDCAN_DLC_BYTES_7;
+      break;
+    case 4U:
+      malformed = response(0xFFFFU, 4500U);
+      break;
+    case 5U:
+      malformed.header.IdType = FDCAN_EXTENDED_ID;
+      break;
+    case 6U:
+      malformed.header.RxFrameType = FDCAN_REMOTE_FRAME;
+      break;
+    default:
+      malformed.header.FDFormat = FDCAN_FD_CAN;
+      break;
+    }
+    enqueue(malformed);
+    CHECK(!app_can_poll_dashboard_data(&data));
+    CHECK(data.valid_mask == expected_mask);
+    CHECK(data.pack_voltage_deci_volts == 4000U);
+    CHECK(data.signal_tick_ms[APP_CAN_SIGNAL_PACK_VOLTAGE] == 42U);
+    CHECK(!app_can_signal_is_fresh(&data, APP_CAN_SIGNAL_PACK_VOLTAGE, fake_tick));
+  }
+
+  enqueue(response(APP_CAN_PID_PACK_VOLTAGE, 4500U));
+  fake_rx_error = true;
+  CHECK(!app_can_poll_dashboard_data(&data));
+  CHECK(data.signal_tick_ms[APP_CAN_SIGNAL_PACK_VOLTAGE] == 42U);
+  fake_rx_error = false;
+  CHECK(app_can_poll_dashboard_data(&data));
+  CHECK(data.pack_voltage_deci_volts == 4500U);
+  CHECK(data.signal_tick_ms[APP_CAN_SIGNAL_PACK_VOLTAGE] == fake_tick);
+  CHECK(data.valid_mask == expected_mask);
+  CHECK(app_can_signal_is_fresh(&data, APP_CAN_SIGNAL_PACK_VOLTAGE, fake_tick));
+  return true;
+}
+
+/**
  * Exhaust raw current, SOC and signed-temperature domains to check boundaries and scaling.
  *
  * Inputs: none; this independent group resets driver/fake state before exercising the
@@ -896,6 +1038,9 @@ int main(int argc, char **argv) {
       {"initialization and recovery", test_initialization_and_recovery},
       {"null guards and configuration", test_null_guards_and_configuration},
       {"all ten PID conversions", test_all_pid_conversions},
+      {"signal freshness boundaries", test_signal_freshness_boundaries},
+      {"per-PID independent validity and age", test_each_pid_has_independent_validity_and_age},
+      {"invalid replies do not refresh signal age", test_invalid_replies_do_not_refresh_signal_age},
       {"exhaustive scalar domains", test_exhaustive_scalar_domains},
       {"exact single-frame lengths", test_exact_single_frame_lengths},
       {"frame metadata rejection", test_frame_metadata_rejection},

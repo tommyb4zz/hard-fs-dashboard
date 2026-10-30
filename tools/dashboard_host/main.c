@@ -9,7 +9,9 @@
 #include "render.h"
 #include "lvgl/lvgl.h"
 #include "ui/screens/ui_MainScreen.h"
+#include "ui/ui.h"
 #include "ui/screens/ui_DebugScreen.h"
+#include "app_fault_history.h"
 #include <ctype.h>
 #include <errno.h>
 #include <limits.h>
@@ -192,7 +194,11 @@ print_step(uint32_t tick, bool updated, bool logged, const app_can_dashboard_dat
            (unsigned long)(lv_color_to32(lv_obj_get_style_border_color(panels[i], LV_PART_MAIN)) &
                            0xFFFFFFU));
   }
-  printf("],\"ram_count\":%lu,\"emmc_count\":%lu,\"emmc_overflow\":%s}\n",
+  printf("],\"valid_mask\":%u,\"fault_count\":%lu,\"fault_pending\":%lu,\"ram_count\":%lu,\"emmc_"
+         "count\":%lu,\"emmc_overflow\":%s}\n",
+         data->valid_mask,
+         (unsigned long)app_fault_history_count(),
+         (unsigned long)app_fault_history_pending(),
          (unsigned long)app_data_log_get_count(),
          (unsigned long)status.record_count,
          status.overflow ? "true" : "false");
@@ -216,6 +222,10 @@ int main(void) {
   app_data_log_init();
   if (!app_can_init() || !app_emmc_log_init() || !dashboard_render_init())
     return 1;
+  app_fault_history_init(1U);
+  app_fault_history_attach(app_emmc_fault_read, app_emmc_fault_write, app_emmc_fault_capacity());
+  app_aux_ui_state_t initial_aux = {0};
+  app_ui_refresh(&data, &initial_aux, 0U);
   char line[4096];
   uint32_t last_tick = 0;
   while (fgets(line, sizeof(line), stdin)) {
@@ -262,10 +272,43 @@ int main(void) {
         aux.status_signals[i].valid = (valid & (1U << i)) != 0;
         aux.status_signals[i].fault_active = (fault & (1U << i)) != 0;
       }
-      app_ui_apply_dashboard_data(&data);
-      app_ui_apply_aux_state(&aux, last_tick);
+      app_ui_refresh(&data, &aux, last_tick);
       dashboard_render_step(last_tick);
       print_step(last_tick, updated, logged, &data);
+    } else if (line[0] == 'S' && line[1] == ' ') {
+      lv_obj_t *screen = strcmp(line + 2, "main") == 0     ? ui_MainScreen
+                         : strcmp(line + 2, "debug") == 0  ? ui_DebugScreen
+                         : strcmp(line + 2, "pack") == 0   ? ui_DetailScreen
+                         : strcmp(line + 2, "faults") == 0 ? ui_FaultScreen
+                                                           : NULL;
+      if (screen == NULL)
+        return 2;
+      ui_fault_history_refresh();
+      lv_disp_load_scr(screen);
+      printf("{\"ok\":true}\n");
+      fflush(stdout);
+    } else if (line[0] == 'H' && line[1] == ' ' && line[2]) {
+      FILE *file = fopen(line + 2, "w");
+      bool ok = file != NULL;
+      if (ok) {
+        ok = fprintf(file, "sequence,boot,uptime_ms,source,state,detail\n") > 0;
+        for (uint32_t i = 0; ok && i < app_fault_history_count(); ++i) {
+          app_fault_event_t event;
+          ok = app_fault_history_get(i, &event);
+          if (ok)
+            ok = fprintf(file,
+                         "%lu,%lu,%lu,%s,%u,%lu\n",
+                         (unsigned long)event.sequence,
+                         (unsigned long)event.session_id,
+                         (unsigned long)event.timestamp_ms,
+                         app_fault_source_name(event.source),
+                         event.state,
+                         (unsigned long)event.detail) > 0;
+        }
+        ok = fclose(file) == 0 && ok;
+      }
+      printf("{\"ok\":%s}\n", ok ? "true" : "false");
+      fflush(stdout);
     } else if ((line[0] == 'P' || line[0] == 'E') && line[1] == ' ' && line[2]) {
       bool ok;
       if (line[0] == 'P')

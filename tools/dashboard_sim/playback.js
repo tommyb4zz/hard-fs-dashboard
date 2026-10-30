@@ -228,6 +228,7 @@ function mountPlayback(captures, document, window) {
   const replayButton = document.getElementById("replay");
   const speedControl = document.getElementById("speed");
   const loopControl = document.getElementById("loop");
+  const viewControl = document.getElementById("view");
   const playhead = document.getElementById("playhead");
   const stamp = document.getElementById("stamp");
   const stateText = document.getElementById("state");
@@ -265,6 +266,8 @@ function mountPlayback(captures, document, window) {
     requestedIndex = index;
     const version = ++requestVersion;
     const item = captures[index];
+    const view = viewControl ? viewControl.value : "main";
+    const source = item.views && item.views[view] ? item.views[view] : item.image;
     const candidate = new window.Image();
     candidate.id = "frame";
     candidate.alt = "Actual dashboard rendered by LVGL at " + (item.tick_ms / 1000).toFixed(3) + " seconds";
@@ -308,9 +311,9 @@ function mountPlayback(captures, document, window) {
       displayedImage.hidden = true;
       stateText.textContent = "";
       stamp.textContent = "Capture unavailable";
-      error.textContent = "Unable to load capture: " + item.image + ". Keep the PNG files beside index.html.";
+      error.textContent = "Unable to load capture: " + source + ". Keep the PNG files beside index.html.";
     };
-    candidate.src = item.image;
+    candidate.src = source;
   }
 
   /*
@@ -333,6 +336,12 @@ function mountPlayback(captures, document, window) {
     loopControl.checked = state.loop;
     requestCapture(state.index);
   }
+
+  if (viewControl) viewControl.addEventListener("change", function changeScreen() {
+    const index = requestedIndex;
+    requestedIndex = -1;
+    requestCapture(index);
+  });
 
   const environment = {
     /*

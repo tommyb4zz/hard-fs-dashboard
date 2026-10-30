@@ -1,9 +1,8 @@
 /**
- * File purpose: Declare pure dashboard-to-LVGL bindings and the explicit auxiliary data model used by
- * firmware demo and host scenarios. Auxiliary speed/mode/statuses include validity so
- * unknown values remain distinguishable from known healthy values. Internal enum names
- * describe display concepts only; no physical GPIO polarity or CAN field binding is
- * defined.
+ * File purpose: Declare pure dashboard-to-LVGL bindings and the explicit auxiliary data model used
+ * by firmware demo and host scenarios. Auxiliary speed/mode/statuses include validity so unknown
+ * values remain distinguishable from known healthy values. Internal enum names describe display
+ * concepts only; no physical GPIO polarity or CAN field binding is defined.
  */
 #ifndef APP_DASHBOARD_UI_H
 #define APP_DASHBOARD_UI_H
@@ -69,6 +68,10 @@ typedef struct {
  * initial and retained old values render as measurements.
  */
 void app_ui_apply_dashboard_data(const app_can_dashboard_data_t *data);
+/** Render timestamp-aware measurements and record diagnostic transitions. GUI owner only. */
+void app_ui_refresh(const app_can_dashboard_data_t *data,
+                    const app_aux_ui_state_t *aux,
+                    uint32_t now_ms);
 /**
  * Apply auxiliary values to existing objects, rendering unknown speed/mode as dashes.
  * Unknown digital inputs use neutral colors; show every status during boot or when any

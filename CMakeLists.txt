@@ -32,6 +32,7 @@ set(sources_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/Src/app_emmc_log.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Src/app_tasks.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Src/app_dashboard_ui.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Src/app_fault_history.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Src/main.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Src/stm32h7xx_hal_msp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Src/stm32h7xx_it.c

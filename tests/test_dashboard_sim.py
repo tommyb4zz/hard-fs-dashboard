@@ -158,7 +158,7 @@ class DashboardSimulationTests(unittest.TestCase):
             output = Path(directory)
             summary = run_scenario(scenario, output, self.executable)
             self.assertEqual(summary["captures"], 5)
-            self.assertEqual(sorted(path.name for path in output.glob("*.png")), [
+            self.assertEqual(sorted(path.name for path in output.glob("frame-????????.png")), [
                 "frame-00000000.png", "frame-00000100.png", "frame-00000200.png",
                 "frame-00000300.png", "frame-00000350.png"])
             self.assertNotEqual((output / "frame-00000100.png").read_bytes(),

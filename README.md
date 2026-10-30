@@ -1,5 +1,21 @@
 # hard-fs-dashboard
 
+## Live screens and malfunction history
+
+The dashboard uses received CAN measurements with per-signal validity/freshness. Missing
+values show unknown. Cell/current diagnostics, pack/storage details and an append-only
+malfunction screen follow the existing gauge and red-table layouts. History is recovered
+from a separate checksummed eMMC journal across boots; full/failed storage is visible.
+See [runtime behavior, navigation, persistence limits and verification](docs/DASHBOARD_RUNTIME.md).
+
+```sh
+.venv/bin/python -m tools.dashboard_sim --scenario tools/can_sim/scenarios/dashboard.json --output build/dashboard-complete --capture-every-ms 500 --open
+```
+
+Use the browser **Screen** selector to inspect all four recorded views and download
+`fault-history.csv`. Firmware auxiliary inputs remain unknown until their actual vehicle
+mapping is supplied; production firmware no longer generates demo speed or healthy states.
+
 ## Function documentation and virtual CAN testing
 
 - [Complete code guide](docs/CODE_GUIDE.md): expanded function contracts, module explanations, startup/build, synthetic tests, UI and BDP connections.
@@ -25,8 +41,7 @@ python3 -m venv .venv
 
 The dashboard command builds a host executable and writes actual LVGL captures, an animated viewer,
 decoded snapshots and validated log exports to `build/dashboard-sim/`. Edit the JSON and rerun to
-change inputs over time. `--open` opens the viewer in your default browser. The original automatic
-firmware demo remains available.
+change inputs over time. `--open` opens the viewer in your default browser. The synthetic auxiliary helper is retained for explicit tests; it is not called by production firmware.
 
 The Python integration tests require CMake and a host Clang/GCC compiler with sanitizer support.
 See [production CAN host tests](tests/can_host/README.md) for the independent C suite.

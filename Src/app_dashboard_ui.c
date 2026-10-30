@@ -1,14 +1,15 @@
 /**
- * File purpose: Bind integer-scaled battery snapshots and explicit auxiliary validity/fault state to
- * the existing generated LVGL objects. Format labels, derive bar values and logger
- * occupancy, and control group-wide status visibility. The separate automatic auxiliary
- * generator preserves the firmware demo; host tests instead apply JSON-provided states.
- * All LVGL mutations require initialized screens and serialized caller access.
+ * File purpose: Bind integer-scaled battery snapshots and explicit auxiliary validity/fault state
+ * to the existing generated LVGL objects. Format labels, derive bar values and logger occupancy,
+ * and control group-wide status visibility. The separate automatic auxiliary generator is retained
+ * only for explicit demos/tests; production inputs start unknown. All LVGL mutations require
+ * initialized screens and serialized caller access.
  */
 #include "app_dashboard_ui.h"
 
 #include "app_data_log.h"
 #include "app_emmc_log.h"
+#include "app_fault_history.h"
 #include "lvgl/lvgl.h"
 #include "ui/screens/ui_MainScreen.h"
 #include "ui/ui.h"
@@ -49,30 +50,7 @@ static int32_t app_ui_slider_from_temperature(int8_t temperature_c) {
   }
 
   return temperature_c;
-} /* TODO: we should diagnose the fauults and store them in an append only file
-
-/**
- * Round the magnitude of current in deciamps to whole amps and clamp it to the UI slider
- * range 1 through 100; return the display value.
- *
- * Input units are signed 0.1 A; add five before division by ten to round magnitude. The
- * returned bar value loses sign, clips above 100 A and displays even zero at 1. The
- * generated screen caption currently says PWR kWh, so this binding has an unresolved units
- * requirement.
- */
-static int32_t app_ui_slider_from_current(int16_t current_deci_amps) {
-  int32_t current_amps = (app_ui_abs_int32(current_deci_amps) + 5) / 10;
-
-  if (current_amps < 1) {
-    return 1;
-  }
-
-  if (current_amps > 100) {
-    return 100;
-  }
-
-  return current_amps;
-}
+} /* Fault transitions are retained in the append-only malfunction journal. */
 
 /**
  * If label exists, convert voltage from 100-microvolt units to rounded millivolts and
@@ -387,55 +365,203 @@ void app_ui_apply_aux_state(const app_aux_ui_state_t *state, uint32_t now_ms) {
  * returns before logger reads. No battery freshness/validity logic is applied, so zero
  * initial and retained old values render as measurements.
  */
-void app_ui_apply_dashboard_data(const app_can_dashboard_data_t *data) {
-  app_emmc_log_status_t emmc_status = {0};
-  uint32_t ram_usage_percent = 0U;
-  uint32_t emmc_used_bytes = 0U;
-  uint32_t emmc_total_bytes = 0U;
-  uint32_t emmc_usage_percent = 0U;
-
-  if (data == NULL) {
+/** Test validity independently for each measurement; zero is a valid received value. */
+static bool ui_fresh(const app_can_dashboard_data_t *data, unsigned signal, uint32_t now) {
+  return (data->valid_mask & (1U << signal)) != 0U &&
+         (uint32_t)(now - data->signal_tick_ms[signal]) <= APP_CAN_STALE_MS;
+}
+/** Format signed current to one decimal amp without discarding its sign. */
+static void ui_current(lv_obj_t *label, int16_t current) {
+  int32_t magnitude = app_ui_abs_int32(current);
+  lv_obj_set_style_text_font(label, &ui_font_TomorrowBoldItalic18, 0);
+  lv_label_set_text_fmt(
+      label, "%s%ld.%ld", current < 0 ? "-" : "", (long)(magnitude / 10), (long)(magnitude % 10));
+}
+/** Hide an unknown gauge's fill and mask; leave the existing outline visible. */
+static void ui_gauge_valid(lv_obj_t *fill, lv_obj_t *knob, bool fresh) {
+  app_ui_set_object_hidden(fill, !fresh);
+  app_ui_set_object_hidden(knob, !fresh);
+}
+/** Render values and diagnostics with explicit age, leaving layout independent of data. */
+static void app_ui_apply_at(const app_can_dashboard_data_t *data, uint32_t now) {
+  if (data == NULL)
     return;
+  const bool fresh[10] = {ui_fresh(data, 0, now),
+                          ui_fresh(data, 1, now),
+                          ui_fresh(data, 2, now),
+                          ui_fresh(data, 3, now),
+                          ui_fresh(data, 4, now),
+                          ui_fresh(data, 5, now),
+                          ui_fresh(data, 6, now),
+                          ui_fresh(data, 7, now),
+                          ui_fresh(data, 8, now),
+                          ui_fresh(data, 9, now)};
+  lv_obj_t *temperatures[] = {
+      ui_labelBatteryTempHigh, ui_labelBatteryTempAvg, ui_labelBatteryTempLow};
+  const int8_t temperature[] = {
+      data->highest_temperature_c, data->average_temperature_c, data->lowest_temperature_c};
+  const unsigned temp_signals[] = {4, 6, 5};
+  lv_obj_t *cells[] = {ui_labelBatteryVoltHigh, ui_labelBatteryVoltAvg, ui_labelBatteryVoltLow};
+  const uint16_t cell[] = {data->highest_cell_voltage_100uv,
+                           data->average_cell_voltage_100uv,
+                           data->lowest_cell_voltage_100uv};
+  const unsigned cell_signals[] = {8, 9, 7};
+  bool voltage_valid = fresh[0] || fresh[1];
+  uint16_t voltage =
+      fresh[0] ? data->pack_voltage_deci_volts : data->pack_summed_voltage_deci_volts;
+  bool power_valid = fresh[2] && voltage_valid && data->power_valid;
+  lv_obj_t *powers[] = {ui_labelBatteryPowerHigh, ui_labelBatteryPowerAvg, ui_labelBatteryPowerLow};
+  const int16_t power[] = {
+      data->highest_pack_power_kw, data->average_pack_power_kw, data->lowest_pack_power_kw};
+  lv_obj_t *currents[] = {ui_labelDebugSpeedHigh, ui_labelDebugSpeedAvg, ui_labelDebugSpeedLow};
+  const int16_t current[] = {data->highest_pack_current_deci_amps,
+                             data->average_pack_current_deci_amps,
+                             data->lowest_pack_current_deci_amps};
+  for (unsigned i = 0; i < 3; ++i) {
+    if (fresh[temp_signals[i]])
+      app_ui_set_signed_integer_label(temperatures[i], temperature[i]);
+    else
+      lv_label_set_text(temperatures[i], "--");
+    if (fresh[cell_signals[i]])
+      app_ui_set_voltage_mv_label(cells[i], cell[i]);
+    else
+      lv_label_set_text(cells[i], "--");
+    if (power_valid)
+      app_ui_set_signed_integer_label(powers[i], power[i]);
+    else
+      lv_label_set_text(powers[i], "--");
+    if (fresh[2])
+      ui_current(currents[i], current[i]);
+    else
+      lv_label_set_text(currents[i], "--");
   }
-
-  ram_usage_percent =
-      app_ui_calculate_usage_percent(app_data_log_get_count(), app_data_log_get_capacity());
-  app_emmc_log_get_status(&emmc_status);
-  if (emmc_status.reserved_blocks > 1U) {
-    emmc_used_bytes = (emmc_status.written_blocks * 512U) + emmc_status.staged_bytes;
-    emmc_total_bytes = (emmc_status.reserved_blocks - 1U) * 512U;
-    emmc_usage_percent = app_ui_calculate_usage_percent(emmc_used_bytes, emmc_total_bytes);
-  }
-
-  if (ui_labelBatteryTempHigh != NULL) {
-    lv_label_set_text_fmt(ui_labelBatteryTempHigh, "%d", (int)data->highest_temperature_c);
-  }
-
-  if (ui_labelBatteryTempAvg != NULL) {
-    lv_label_set_text_fmt(ui_labelBatteryTempAvg, "%d", (int)data->average_temperature_c);
-  }
-
-  if (ui_labelBatteryTempLow != NULL) {
-    lv_label_set_text_fmt(ui_labelBatteryTempLow, "%d", (int)data->lowest_temperature_c);
-  }
-
-  app_ui_set_voltage_mv_label(ui_labelBatteryVoltLow, data->lowest_cell_voltage_100uv);
-  app_ui_set_voltage_mv_label(ui_labelBatteryVoltAvg, data->average_cell_voltage_100uv);
-  app_ui_set_voltage_mv_label(ui_labelBatteryVoltHigh, data->highest_cell_voltage_100uv);
-
-  app_ui_set_signed_integer_label(ui_labelBatteryPowerLow, data->lowest_pack_power_kw);
-  app_ui_set_signed_integer_label(ui_labelBatteryPowerAvg, data->average_pack_power_kw);
-  app_ui_set_signed_integer_label(ui_labelBatteryPowerHigh, data->highest_pack_power_kw);
-
-  if (ui_labelDebugSpeedHigh != NULL) {
-    lv_label_set_text_fmt(ui_labelDebugSpeedHigh, "%lu%%", (unsigned long)ram_usage_percent);
-  }
-
-  if (ui_labelDebugSpeedAvg != NULL) {
-    lv_label_set_text_fmt(ui_labelDebugSpeedAvg, "%lu%%", (unsigned long)emmc_usage_percent);
-  }
-
   ui_set_batt_temp_slider_value(app_ui_slider_from_temperature(data->highest_temperature_c));
-  ui_set_power_consumption_slider_value(app_ui_slider_from_current(data->pack_current_deci_amps));
-  ui_set_batt_level_slider_value((int32_t)data->pack_state_of_charge);
+  int64_t power_numerator = (int64_t)data->pack_current_deci_amps * voltage;
+  int32_t watts_kw =
+      (int32_t)((power_numerator >= 0 ? power_numerator + 50000 : power_numerator - 50000) /
+                100000);
+  ui_set_power_consumption_slider_value(app_ui_abs_int32(watts_kw));
+  ui_set_batt_level_slider_value(data->pack_state_of_charge);
+  ui_gauge_valid(ui_imgBattTempFill, ui_imgBattTempKnob, fresh[4]);
+  ui_gauge_valid(ui_imgPowerConsumptionFill, ui_imgPowerConsumptionKnob, power_valid);
+  ui_gauge_valid(ui_imgBattLevelFill, ui_imgBattLevelKnob, fresh[3]);
+  lv_obj_set_style_text_font(ui_labelBatteryTemperature, &ui_font_TomorrowBoldItalic14, 0);
+  lv_obj_set_style_text_font(ui_labelPowerConsumption, &ui_font_TomorrowBoldItalic14, 0);
+  lv_obj_set_style_text_font(ui_labelBatteryLevel, &ui_font_TomorrowBoldItalic14, 0);
+  lv_label_set_text_fmt(
+      ui_labelBatteryTemperature, fresh[4] ? "TEMP %dC" : "TEMP --", data->highest_temperature_c);
+  lv_label_set_text_fmt(
+      ui_labelPowerConsumption, power_valid ? "PWR %ldkW" : "PWR --", (long)watts_kw);
+  lv_label_set_text_fmt(
+      ui_labelBatteryLevel, fresh[3] ? "BATT %u%%" : "BATT --", data->pack_state_of_charge);
+  unsigned detail_signal[] = {0, 1, 3};
+  for (unsigned i = 0; i < 3; ++i) {
+    unsigned signal = detail_signal[i];
+    if (!fresh[signal])
+      lv_label_set_text(ui_DetailValues[i], "--");
+    else if (i == 2)
+      lv_label_set_text_fmt(ui_DetailValues[i], "%u", data->pack_state_of_charge);
+    else {
+      uint16_t v = i == 0 ? data->pack_voltage_deci_volts : data->pack_summed_voltage_deci_volts;
+      lv_label_set_text_fmt(ui_DetailValues[i], "%u.%u", v / 10U, v % 10U);
+    }
+    lv_label_set_text(ui_DetailStates[i],
+                      fresh[signal]                         ? "LIVE"
+                      : (data->valid_mask & (1U << signal)) ? "STALE"
+                                                            : "MISSING");
+  }
+  app_emmc_log_status_t storage = {0};
+  app_emmc_log_get_status(&storage);
+  uint32_t ram =
+      app_ui_calculate_usage_percent(app_data_log_get_count(), app_data_log_get_capacity());
+  uint32_t emmc =
+      storage.reserved_blocks > 1U
+          ? app_ui_calculate_usage_percent(storage.written_blocks * 512U + storage.staged_bytes,
+                                           (storage.reserved_blocks - 1U) * 512U)
+          : 0U;
+  lv_label_set_text_fmt(
+      ui_DetailValues[3], "RAM %lu%% MMC %lu%%", (unsigned long)ram, (unsigned long)emmc);
+  lv_obj_set_style_text_font(ui_DetailValues[3], &ui_font_TomorrowBoldItalic12, 0);
+  lv_label_set_text(ui_DetailStates[3],
+                    !storage.ready || storage.io_failed ? "ERROR"
+                    : storage.overflow                  ? "FULL"
+                                                        : "READY");
+}
+/** Compatibility binding uses LVGL time; production paths use explicit shared clock below. */
+void app_ui_apply_dashboard_data(const app_can_dashboard_data_t *data) {
+  app_ui_apply_at(data, lv_tick_get());
+}
+/** Render live state and append diagnostic transitions, never clearing previous events. */
+void app_ui_refresh(const app_can_dashboard_data_t *data,
+                    const app_aux_ui_state_t *aux,
+                    uint32_t now_ms) {
+  if (data == NULL || aux == NULL)
+    return;
+  app_ui_apply_at(data, now_ms);
+  app_ui_apply_aux_state(aux, now_ms);
+  bool all_fresh = true;
+  for (unsigned i = 0; i < APP_CAN_SIGNAL_COUNT; ++i) {
+    bool fresh = ui_fresh(data, i, now_ms);
+    all_fresh = all_fresh && fresh;
+    if (now_ms >= APP_CAN_STALE_MS || fresh)
+      app_fault_history_observe((uint16_t)i,
+                                fresh ? APP_FAULT_STATE_HEALTHY : APP_FAULT_STATE_UNKNOWN,
+                                fresh                            ? 0U
+                                : (data->valid_mask & (1U << i)) ? 1U
+                                                                 : 0U,
+                                now_ms);
+  }
+  for (unsigned i = 0; i < APP_STATUS_SIGNAL_COUNT; ++i) {
+    const app_status_signal_state_t *status = &aux->status_signals[i];
+    if (status->valid || now_ms >= APP_CAN_STALE_MS)
+      app_fault_history_observe((uint16_t)(10U + i),
+                                !status->valid         ? APP_FAULT_STATE_UNKNOWN
+                                : status->fault_active ? APP_FAULT_STATE_ACTIVE
+                                                       : APP_FAULT_STATE_HEALTHY,
+                                0,
+                                now_ms);
+  }
+  if (now_ms >= APP_CAN_STALE_MS) {
+    app_fault_history_observe(APP_FAULT_SPEED,
+                              aux->speed_valid ? APP_FAULT_STATE_HEALTHY : APP_FAULT_STATE_UNKNOWN,
+                              0,
+                              now_ms);
+    app_fault_history_observe(APP_FAULT_MODE,
+                              aux->drive_mode_valid && aux->drive_mode < APP_DRIVE_MODE_COUNT
+                                  ? APP_FAULT_STATE_HEALTHY
+                                  : APP_FAULT_STATE_UNKNOWN,
+                              0,
+                              now_ms);
+  }
+  if (data->rejected_frames != 0U)
+    app_fault_history_observe(
+        APP_FAULT_CAN_REJECTED, APP_FAULT_STATE_ACTIVE, data->rejected_frames, now_ms);
+  if (data->request_timeouts != 0U)
+    app_fault_history_observe(APP_FAULT_CAN_TIMEOUT,
+                              all_fresh ? APP_FAULT_STATE_HEALTHY : APP_FAULT_STATE_ACTIVE,
+                              data->request_timeouts,
+                              now_ms);
+  app_emmc_log_status_t storage = {0};
+  app_emmc_log_get_status(&storage);
+  static uint32_t last_io_errors;
+  if (storage.io_errors != last_io_errors) {
+    app_fault_history_observe(APP_FAULT_STORAGE, APP_FAULT_STATE_ACTIVE, storage.io_errors, now_ms);
+    last_io_errors = storage.io_errors;
+  }
+  app_fault_history_observe(APP_FAULT_STORAGE,
+                            storage.ready && !storage.io_failed ? APP_FAULT_STATE_HEALTHY
+                                                                : APP_FAULT_STATE_ACTIVE,
+                            storage.io_errors,
+                            now_ms);
+  app_fault_history_observe(APP_FAULT_STORAGE_FULL,
+                            storage.overflow ? APP_FAULT_STATE_ACTIVE : APP_FAULT_STATE_HEALTHY,
+                            0,
+                            now_ms);
+  app_fault_history_flush();
+  app_fault_history_observe(21U,
+                            app_fault_history_durable() ? APP_FAULT_STATE_HEALTHY
+                                                        : APP_FAULT_STATE_ACTIVE,
+                            0,
+                            now_ms);
+  ui_fault_history_refresh();
 }

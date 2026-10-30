@@ -25,6 +25,7 @@ extern "C" {
 ///////////////////// SCREENS ////////////////////
 #include "screens/ui_MainScreen.h"
 #include "screens/ui_DebugScreen.h"
+#include "screens/ui_Diagnostics.h"
 
 ///////////////////// VARIABLES ////////////////////
 

@@ -434,7 +434,7 @@ void ui_MainScreen_screen_init(void) {
   lv_obj_set_x(ui_labelSpeed, -20);
   lv_obj_set_y(ui_labelSpeed, -101);
   lv_obj_set_align(ui_labelSpeed, LV_ALIGN_CENTER);
-  lv_label_set_text(ui_labelSpeed, "120");
+  lv_label_set_text(ui_labelSpeed, "-");
   lv_obj_set_style_text_color(
       ui_labelSpeed, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
   lv_obj_set_style_text_opa(ui_labelSpeed, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -459,7 +459,7 @@ void ui_MainScreen_screen_init(void) {
   lv_obj_set_x(ui_labelBatteryTemperature, -137);
   lv_obj_set_y(ui_labelBatteryTemperature, 116);
   lv_obj_set_align(ui_labelBatteryTemperature, LV_ALIGN_CENTER);
-  lv_label_set_text(ui_labelBatteryTemperature, "TEMP");
+  lv_label_set_text(ui_labelBatteryTemperature, "TEMP --");
   lv_obj_set_style_text_color(
       ui_labelBatteryTemperature, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
   lv_obj_set_style_text_opa(ui_labelBatteryTemperature, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -472,7 +472,7 @@ void ui_MainScreen_screen_init(void) {
   lv_obj_set_x(ui_labelPowerConsumption, -9);
   lv_obj_set_y(ui_labelPowerConsumption, 118);
   lv_obj_set_align(ui_labelPowerConsumption, LV_ALIGN_CENTER);
-  lv_label_set_text(ui_labelPowerConsumption, "PWR kWh");
+  lv_label_set_text(ui_labelPowerConsumption, "PWR --");
   lv_obj_set_style_text_color(
       ui_labelPowerConsumption, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
   lv_obj_set_style_text_opa(ui_labelPowerConsumption, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -485,7 +485,7 @@ void ui_MainScreen_screen_init(void) {
   lv_obj_set_x(ui_labelBatteryLevel, 111);
   lv_obj_set_y(ui_labelBatteryLevel, 115);
   lv_obj_set_align(ui_labelBatteryLevel, LV_ALIGN_CENTER);
-  lv_label_set_text(ui_labelBatteryLevel, "BATT %");
+  lv_label_set_text(ui_labelBatteryLevel, "BATT --");
   lv_obj_set_style_text_color(
       ui_labelBatteryLevel, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
   lv_obj_set_style_text_opa(ui_labelBatteryLevel, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -536,7 +536,7 @@ void ui_MainScreen_screen_init(void) {
   lv_obj_set_x(ui_labelBSPD, 203);
   lv_obj_set_y(ui_labelBSPD, 59);
   lv_obj_set_align(ui_labelBSPD, LV_ALIGN_CENTER);
-  lv_label_set_text(ui_labelBSPD, "BSPB");
+  lv_label_set_text(ui_labelBSPD, "BSPD");
   lv_obj_set_style_text_color(
       ui_labelBSPD, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
   lv_obj_set_style_text_opa(ui_labelBSPD, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -574,7 +574,7 @@ void ui_MainScreen_screen_init(void) {
   lv_obj_set_x(ui_labelDriveMode, -199);
   lv_obj_set_y(ui_labelDriveMode, -118);
   lv_obj_set_align(ui_labelDriveMode, LV_ALIGN_CENTER);
-  lv_label_set_text(ui_labelDriveMode, "N");
+  lv_label_set_text(ui_labelDriveMode, "-");
   lv_obj_set_style_text_color(
       ui_labelDriveMode, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
   lv_obj_set_style_text_opa(ui_labelDriveMode, 255, LV_PART_MAIN | LV_STATE_DEFAULT);

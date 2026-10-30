@@ -4,6 +4,7 @@
 #include "semphr.h"
 #include "stm32h745i_discovery_mmc.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 GPIO_TypeDef fake_gpio_ports[9];
@@ -18,7 +19,8 @@ static host_rx_t rx[DASHBOARD_HOST_RX_LIMIT];
 static unsigned rx_read, rx_write;
 static dashboard_host_tx_t outgoing;
 static bool tx_pending;
-static uint8_t storage[64][512];
+static FILE *storage;
+static int mutex_token;
 static uint8_t wire[65536];
 static size_t wire_size;
 
@@ -243,7 +245,7 @@ void HAL_GPIO_DeInit(GPIO_TypeDef *port, uint32_t pin) {
  * and establishes no exclusion. This is sufficient only for the sequential host runner.
  */
 SemaphoreHandle_t xSemaphoreCreateMutex(void) {
-  return storage;
+  return &mutex_token;
 }
 /**
  * Validate the token without waiting for another task.
@@ -274,7 +276,17 @@ int xSemaphoreGive(SemaphoreHandle_t mutex) {
 int32_t BSP_MMC_Init(uint32_t instance) {
   if (instance != 0U)
     return -1;
-  memset(storage, 0xFF, sizeof(storage));
+  if (storage == NULL) {
+    const char *path = getenv("DASHBOARD_STORAGE_FILE");
+    if (path != NULL) {
+      storage = fopen(path, "r+b");
+      if (storage == NULL)
+        storage = fopen(path, "w+b");
+    } else
+      storage = tmpfile();
+  }
+  if (storage == NULL)
+    return -1;
   return BSP_ERROR_NONE;
 }
 /**
@@ -287,7 +299,7 @@ int32_t BSP_MMC_Init(uint32_t instance) {
 int32_t BSP_MMC_GetCardInfo(uint32_t instance, BSP_MMC_CardInfo *info) {
   if (instance != 0U || info == NULL)
     return -1;
-  info->LogBlockNbr = 4096U + 64U;
+  info->LogBlockNbr = 4096U + 262144U + 4096U;
   return BSP_ERROR_NONE;
 }
 /**
@@ -298,7 +310,7 @@ int32_t BSP_MMC_GetCardInfo(uint32_t instance, BSP_MMC_CardInfo *info) {
  * overflow from block+count; storage remains unchanged.
  */
 static bool storage_range(uint32_t block, uint32_t count) {
-  return block >= 4096U && block < 4160U && count > 0U && count <= 4160U - block;
+  return block >= 4096U && block < 270336U && count > 0U && count <= 270336U - block;
 }
 /**
  * Read bounded fake blocks.
@@ -310,7 +322,14 @@ static bool storage_range(uint32_t block, uint32_t count) {
 int32_t BSP_MMC_ReadBlocks(uint32_t instance, uint32_t *bytes, uint32_t block, uint32_t count) {
   if (instance != 0U || bytes == NULL || !storage_range(block, count))
     return -1;
-  memcpy(bytes, storage[block - 4096U], (size_t)count * 512U);
+  if (storage == NULL || fseek(storage, (long)(block - 4096U) * 512L, SEEK_SET) != 0)
+    return -1;
+  memset(bytes, 255, (size_t)count * 512U);
+  size_t size = fread(bytes, 1, (size_t)count * 512U, storage);
+  if (ferror(storage))
+    return -1;
+  /* Sparse holes read as zero; both zero and FF represent unoccupied journal slots. */
+  (void)size;
   return BSP_ERROR_NONE;
 }
 /**
@@ -323,7 +342,9 @@ int32_t BSP_MMC_ReadBlocks(uint32_t instance, uint32_t *bytes, uint32_t block, u
 int32_t BSP_MMC_WriteBlocks(uint32_t instance, uint32_t *bytes, uint32_t block, uint32_t count) {
   if (instance != 0U || bytes == NULL || !storage_range(block, count))
     return -1;
-  memcpy(storage[block - 4096U], bytes, (size_t)count * 512U);
+  if (storage == NULL || fseek(storage, (long)(block - 4096U) * 512L, SEEK_SET) != 0 ||
+      fwrite(bytes, 512U, count, storage) != count || fflush(storage) != 0)
+    return -1;
   return BSP_ERROR_NONE;
 }
 /**
@@ -366,4 +387,10 @@ bool dashboard_host_export_save(const char *path) {
     return false;
   bool ok = fwrite(wire, 1, wire_size, file) == wire_size;
   return fclose(file) == 0 && ok;
+}
+
+/** Host fake card writes complete synchronously. */
+int32_t BSP_MMC_GetCardState(uint32_t instance) {
+  (void)instance;
+  return MMC_TRANSFER_OK;
 }

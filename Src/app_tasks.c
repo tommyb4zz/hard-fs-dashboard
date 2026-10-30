@@ -1,8 +1,8 @@
 /**
  * File purpose: Create and run the FreeRTOS GUI, CAN acquisition and UART console tasks. A
  * one-element overwrite queue transfers the latest full battery snapshot to the GUI, while
- * acquisition records snapshots in RAM/eMMC. The GUI owns LVGL and uses synthetic
- * auxiliary placeholders. Console commands inspect/reset/export logs. This coordination
+ * acquisition records measurements in RAM/eMMC. The GUI owns LVGL; unbound auxiliary
+ * inputs remain unknown. Console commands inspect/reset/export logs. This coordination
  * does not bind real speed/mode/status inputs or recover failed peripherals.
  */
 
@@ -15,6 +15,7 @@
 #include "app_dashboard_ui.h"
 #include "app_data_log.h"
 #include "app_emmc_log.h"
+#include "app_fault_history.h"
 #include "main.h"
 
 #include "FreeRTOS.h"
@@ -28,27 +29,6 @@
 
 /* Queue length is one: acquisition overwrites old UI work so the GUI sees latest state. */
 static QueueHandle_t app_ui_queue = NULL;
-
-/* Initial zeros are display defaults, not established battery measurements. */
-static const app_can_dashboard_data_t app_default_dashboard_data = {
-    .pack_voltage_deci_volts = 0U,
-    .pack_summed_voltage_deci_volts = 0U,
-    .lowest_cell_voltage_100uv = 0U,
-    .average_cell_voltage_100uv = 0U,
-    .highest_cell_voltage_100uv = 0U,
-    .pack_current_deci_amps = 0,
-    .lowest_pack_current_deci_amps = 0,
-    .average_pack_current_deci_amps = 0,
-    .highest_pack_current_deci_amps = 0,
-    .lowest_pack_power_kw = 0,
-    .average_pack_power_kw = 0,
-    .highest_pack_power_kw = 0,
-    .pack_state_of_charge = 0U,
-    .highest_temperature_c = 0,
-    .average_temperature_c = 0,
-    .lowest_temperature_c = 0,
-    .fault_flags = 0U,
-};
 
 /* Stack sizes are FreeRTOS words; periods are milliseconds converted with pdMS_TO_TICKS.
  * GUI/console priority is idle+1; acquisition idle+2. No task handles are retained. */
@@ -225,22 +205,22 @@ static void app_console_handle_command(uint8_t command) {
 
 /**
  * FreeRTOS entry point with an unused argument: initialize LVGL, LCD, touch and screens,
- * then consume the latest CAN snapshot, update auxiliary placeholders and service LVGL on
+ * then consume the latest CAN snapshot, refresh live diagnostics and service LVGL on
  * the configured 5 ms schedule; never return.
  *
  * argument is unused. The task alone owns normal LVGL calls: initialize
  * library/display/touch/generated objects before any binding, drain the queue without
- * waiting, and apply auxiliary changes only when the full state differs. It advances LVGL
- * time by a fixed 5 ms per loop rather than measured elapsed time, services timers, then
+ * waiting, and refresh measurements/fault transitions every 100 ms. LVGL time advances
+ * by measured HAL elapsed time, including storage delays; services timers, then
  * delays against last_wake. Queue overwrites can omit intermediate UI states; LCD fatal
  * errors halt, touch initialization can silently return.
  */
 static void app_gui_task(void *argument) {
   app_aux_ui_state_t aux_state = {0};
-  app_aux_ui_state_t last_applied_aux_state = {0};
-  app_can_dashboard_data_t data = app_default_dashboard_data;
+  app_can_dashboard_data_t data = {0};
   TickType_t last_wake = xTaskGetTickCount();
-  bool aux_state_applied = false;
+  uint32_t last_refresh_ms = 0U;
+  uint32_t last_lv_tick = HAL_GetTick();
   uint32_t now_ms = 0U;
 
   (void)argument;
@@ -249,27 +229,22 @@ static void app_gui_task(void *argument) {
   LCD_init();
   touchpad_init();
   ui_init();
-  app_ui_apply_dashboard_data(&data);
-  app_ui_update_aux_placeholders(&aux_state, 0U);
-  app_ui_apply_aux_state(&aux_state, 0U);
-  last_applied_aux_state = aux_state;
-  aux_state_applied = true;
+  app_fault_history_init(1U);
+  app_fault_history_attach(app_emmc_fault_read, app_emmc_fault_write, app_emmc_fault_capacity());
+  app_ui_refresh(&data, &aux_state, HAL_GetTick());
 
   for (;;) {
     while (xQueueReceive(app_ui_queue, &data, 0U) == pdPASS) {
-      app_ui_apply_dashboard_data(&data);
+    }
+    now_ms = HAL_GetTick();
+    if ((uint32_t)(now_ms - last_refresh_ms) >= 100U) {
+      app_ui_refresh(&data, &aux_state, now_ms);
+      last_refresh_ms = now_ms;
     }
 
-    now_ms = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
-    app_ui_update_aux_placeholders(&aux_state, now_ms);
-    if (!aux_state_applied ||
-        (memcmp(&aux_state, &last_applied_aux_state, sizeof(aux_state)) != 0)) {
-      app_ui_apply_aux_state(&aux_state, now_ms);
-      last_applied_aux_state = aux_state;
-      aux_state_applied = true;
-    }
-
-    lv_tick_inc(APP_GUI_TASK_PERIOD_MS);
+    uint32_t tick = HAL_GetTick();
+    lv_tick_inc(tick - last_lv_tick);
+    last_lv_tick = tick;
     lv_timer_handler();
     vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(APP_GUI_TASK_PERIOD_MS));
   }
@@ -317,8 +292,9 @@ static void app_can_rx_task(void *argument) {
       timestamp_ms = (uint32_t)(xTaskGetTickCount() * portTICK_PERIOD_MS);
       app_data_log_record(timestamp_ms, &data);
       (void)app_emmc_log_append(timestamp_ms, &data);
-      (void)xQueueOverwrite(app_ui_queue, &data);
     }
+    /* Publish counters even without accepted measurements; GUI checks ages on its clock. */
+    (void)xQueueOverwrite(app_ui_queue, &data);
 
     vTaskDelay(pdMS_TO_TICKS(APP_CAN_TASK_POLL_MS));
   }
