@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "duration": 10,
+  "signals": {
+    "pack_voltage_v": {
+      "interpolation": "linear",
+      "points": [
+        {"t": 0, "value": 350},
+        {"t": 5, "value": 340},
+        {"t": 10, "value": 360}
+      ]
+    },
+    "pack_summed_voltage_v": 350.12,
+    "pack_current_a": {
+      "interpolation": "linear",
+      "points": [
+        {"t": 0, "value": -100},
+        {"t": 5, "value": 0},
+        {"t": 10, "value": 100}
+      ]
+    },
+    "pack_soc_pct": {
+      "interpolation": "step",
+      "points": [
+        {"t": 0, "value": 100},
+        {"t": 4, "value": 50},
+        {"t": 8, "value": 0}
+      ]
+    },
+    "highest_temperature_c": 40,
+    "lowest_temperature_c": 20,
+    "average_temperature_c": 30,
+    "lowest_cell_voltage_v": 3.2,
+    "highest_cell_voltage_v": 4.2,
+    "average_cell_voltage_v": 3.6
+  },
+  "faults": []
+}

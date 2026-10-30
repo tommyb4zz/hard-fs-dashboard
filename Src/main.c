@@ -1,3 +1,9 @@
+/**
+ * File purpose: Start the STM32 dashboard: configure MPU/caches/clocks and debug UART, map
+ * QSPI assets, create application tasks and start FreeRTOS. Provide fatal-error and stack-
+ * overflow hooks.
+ */
+
 #include "main.h"
 
 #include <stdio.h>
@@ -11,7 +17,6 @@
 void SystemClock_Config(void);
 static void MPU_Config(void);
 static void DebugConsole_Init(void);
-void Error_Handler(void);
 
 #ifdef DEBUG
 #  define APP_BUILD_CONFIGURATION_NAME "Debug"
@@ -19,6 +24,20 @@ void Error_Handler(void);
 #  define APP_BUILD_CONFIGURATION_NAME "Release"
 #endif
 
+/**
+ * Start firmware from the reset handler; there are no caller arguments and successful execution
+ * stays inside the FreeRTOS scheduler.
+ *
+ * Configure MPU regions before enabling instruction/data caches, then initialize HAL, clocks
+ * and the COM1 debug console. Initialize QSPI in QPI/DTR dual-flash mode and enable memory
+ * mapping before any UI code or assets placed at 0x90000000 can be used. Barriers and
+ * instruction-cache invalidation follow the mapping change.
+ *
+ * Print the build/debug settings, wait 50 ms, create application tasks and start scheduling. A
+ * QSPI error, task-creation failure or scheduler return enters the nonreturning Error_Handler.
+ * This path is not executed by the desktop synthetic runner; mapped flash must be programmed
+ * separately on hardware.
+ */
 int main(void) {
   BSP_QSPI_Init_t qspi_init;
 
@@ -61,6 +80,19 @@ int main(void) {
   Error_Handler();
 }
 
+/**
+ * Configure the board power and clock tree; takes no parameters and returns only after the
+ * checked HAL configuration calls succeed.
+ *
+ * Select LDO supply, request voltage scale 1 and poll VOSRDY. Unsigned HAL-tick subtraction
+ * gives a wrap-tolerant timeout test strictly greater than 100 ms. A supply failure or
+ * readiness timeout halts in Error_Handler.
+ *
+ * Enable HSE and PLL1 with M=5, N=160, P=2, Q=4 and R=2; disable HSI/CSI. With the configured
+ * HSE_VALUE of 25 MHz, the requested PLLP/system rate is 400 MHz, HCLK 200 MHz and divided APB
+ * clocks 100 MHz. These are configuration calculations, not measured frequencies. HAL
+ * oscillator/clock failures halt; the final flash latency is four wait states.
+ */
 void SystemClock_Config(void) {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
@@ -111,6 +143,14 @@ void SystemClock_Config(void) {
   }
 }
 
+/**
+ * Terminate normal application progress after a fatal initialization/runtime error. No input,
+ * status code or recovery is provided.
+ *
+ * Disable maskable interrupts and execute NOP forever. This preserves a halted state for
+ * debugger inspection but does not save fault registers, export logs, reset the MCU or define a
+ * physical safe-output policy. Callers cannot continue after this function.
+ */
 void Error_Handler(void) {
   __disable_irq();
   while (1) {
@@ -118,6 +158,14 @@ void Error_Handler(void) {
   }
 }
 
+/**
+ * FreeRTOS callback for a detected task-stack overflow. xTask and pcTaskName identify the
+ * affected task, but this implementation deliberately discards both.
+ *
+ * Enter Error_Handler, disabling maskable interrupts and halting permanently. The hook does not
+ * print the task name or recover memory; its invocation depends on the configured kernel stack-
+ * check mechanism.
+ */
 void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName) {
   (void)xTask;
   (void)pcTaskName;
@@ -125,6 +173,15 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName) {
   Error_Handler();
 }
 
+/**
+ * Configure BSP COM1 for diagnostic printf output: 115200 baud, eight data bits, one stop bit,
+ * no parity and no hardware flow control.
+ *
+ * Zero-initialize the local configuration, initialize the BSP port and select it as the BSP log
+ * destination. Both BSP return codes are checked and failures enter Error_Handler. This mutates
+ * UART/BSP state; it neither configures the binary log-export protocol nor validates a
+ * connected serial device.
+ */
 static void DebugConsole_Init(void) {
   COM_InitTypeDef com_init = {0};
 
@@ -143,61 +200,57 @@ static void DebugConsole_Init(void) {
   }
 }
 
+/**
+ * Establish memory-access/cache attributes before caches and application peripherals are
+ * enabled. No arguments or return status are exposed.
+ *
+ * Disable the MPU, reuse one zero-initialized descriptor and configure four numbered full-
+ * access, executable, nonshareable, cacheable, nonbufferable regions: AXI SRAM 0x24000000/512
+ * KiB; D2 SRAM 0x30000000/256 KiB; SDRAM 0xD0000000/32 MiB; QSPI 0x90000000/128 MiB. Enable the
+ * privileged default map afterward.
+ *
+ * The attributes describe CPU access policy rather than physical capacity. The supplied BDP
+ * exposes 8 MiB of SDRAM, so the 32 MiB MPU region is a documented bounds-reconciliation gap;
+ * this function does not test memory or initialize its controllers.
+ */
 static void MPU_Config(void) {
   MPU_Region_InitTypeDef MPU_InitStruct = {0};
 
   HAL_MPU_Disable();
 
+  /* All four regions use these access and cache attributes. The vendor HAL reads this
+   * configuration without modifying it, so only region number, base and size change below. */
   MPU_InitStruct.Enable = MPU_REGION_ENABLE;
+  MPU_InitStruct.SubRegionDisable = 0x00;
+  MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;
+  MPU_InitStruct.AccessPermission = MPU_REGION_FULL_ACCESS;
+  MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_ENABLE;
+  MPU_InitStruct.IsShareable = MPU_ACCESS_NOT_SHAREABLE;
+  MPU_InitStruct.IsCacheable = MPU_ACCESS_CACHEABLE;
+  MPU_InitStruct.IsBufferable = MPU_ACCESS_NOT_BUFFERABLE;
+
+  /* AXI SRAM. */
   MPU_InitStruct.Number = MPU_REGION_NUMBER0;
   MPU_InitStruct.BaseAddress = 0x24000000;
   MPU_InitStruct.Size = MPU_REGION_SIZE_512KB;
-  MPU_InitStruct.SubRegionDisable = 0x00;
-  MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;
-  MPU_InitStruct.AccessPermission = MPU_REGION_FULL_ACCESS;
-  MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_ENABLE;
-  MPU_InitStruct.IsShareable = MPU_ACCESS_NOT_SHAREABLE;
-  MPU_InitStruct.IsCacheable = MPU_ACCESS_CACHEABLE;
-  MPU_InitStruct.IsBufferable = MPU_ACCESS_NOT_BUFFERABLE;
   HAL_MPU_ConfigRegion(&MPU_InitStruct);
 
-  MPU_InitStruct.Enable = MPU_REGION_ENABLE;
+  /* D2 SRAM. */
   MPU_InitStruct.Number = MPU_REGION_NUMBER1;
   MPU_InitStruct.BaseAddress = 0x30000000;
   MPU_InitStruct.Size = MPU_REGION_SIZE_256KB;
-  MPU_InitStruct.SubRegionDisable = 0x00;
-  MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;
-  MPU_InitStruct.AccessPermission = MPU_REGION_FULL_ACCESS;
-  MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_ENABLE;
-  MPU_InitStruct.IsShareable = MPU_ACCESS_NOT_SHAREABLE;
-  MPU_InitStruct.IsCacheable = MPU_ACCESS_CACHEABLE;
-  MPU_InitStruct.IsBufferable = MPU_ACCESS_NOT_BUFFERABLE;
   HAL_MPU_ConfigRegion(&MPU_InitStruct);
 
-  MPU_InitStruct.Enable = MPU_REGION_ENABLE;
+  /* External SDRAM. */
   MPU_InitStruct.Number = MPU_REGION_NUMBER2;
   MPU_InitStruct.BaseAddress = 0xD0000000;
   MPU_InitStruct.Size = MPU_REGION_SIZE_32MB;
-  MPU_InitStruct.SubRegionDisable = 0x00;
-  MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;
-  MPU_InitStruct.AccessPermission = MPU_REGION_FULL_ACCESS;
-  MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_ENABLE;
-  MPU_InitStruct.IsShareable = MPU_ACCESS_NOT_SHAREABLE;
-  MPU_InitStruct.IsCacheable = MPU_ACCESS_CACHEABLE;
-  MPU_InitStruct.IsBufferable = MPU_ACCESS_NOT_BUFFERABLE;
   HAL_MPU_ConfigRegion(&MPU_InitStruct);
 
-  MPU_InitStruct.Enable = MPU_REGION_ENABLE;
+  /* Memory-mapped QSPI. */
   MPU_InitStruct.Number = MPU_REGION_NUMBER3;
   MPU_InitStruct.BaseAddress = 0x90000000;
   MPU_InitStruct.Size = MPU_REGION_SIZE_128MB;
-  MPU_InitStruct.SubRegionDisable = 0x00;
-  MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;
-  MPU_InitStruct.AccessPermission = MPU_REGION_FULL_ACCESS;
-  MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_ENABLE;
-  MPU_InitStruct.IsShareable = MPU_ACCESS_NOT_SHAREABLE;
-  MPU_InitStruct.IsCacheable = MPU_ACCESS_CACHEABLE;
-  MPU_InitStruct.IsBufferable = MPU_ACCESS_NOT_BUFFERABLE;
   HAL_MPU_ConfigRegion(&MPU_InitStruct);
 
   HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);

@@ -1,3 +1,19 @@
+/**
+ * File purpose: Define the generated ui_font_TomorrowBoldItalic26 LVGL font descriptor,
+ * glyph bitmap, character mapping and kerning tables; this asset file has no project
+ * function bodies.
+ */
+/**
+ * Asset layout: glyph_bitmap stores packed coverage pixels; glyph_dsc supplies each
+ * glyph's bitmap offset, advance, box dimensions and offsets. cmaps translate Unicode
+ * characters to glyph indices, while kerning tables adjust adjacent-character spacing.
+ * font_dsc links those tables; the public lv_font_t registers upstream LVGL lookup
+ * callbacks and line/baseline metrics. These constants do not poll CAN or update UI
+ * state; labels select the descriptor through their text-font style. Compile-time
+ * font/version guards preserve the generated LVGL descriptor layout.
+ */
+
+
 /*******************************************************************************
  * Size: 26 px
  * Bpp: 8

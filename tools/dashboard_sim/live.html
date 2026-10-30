@@ -1,0 +1,118 @@
+<!-- File purpose: show the running production dashboard's framebuffer and forward presses to its simulated touch panel. -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Live dashboard</title>
+  <style>
+    :root { color-scheme: dark; --bg: #111; --text: #ddd; --muted: #999; --edge: #333; }
+    body { margin: 0; padding: 16px; background: var(--bg); color: var(--text);
+           font: 14px/1.4 system-ui, sans-serif; display: flex; flex-direction: column;
+           align-items: center; gap: 12px; }
+    h1 { font-size: 16px; margin: 0; }
+    #screen { width: min(960px, 100%); height: auto; aspect-ratio: 480 / 272; background: #000;
+              border: 1px solid var(--edge); touch-action: none; user-select: none;
+              image-rendering: pixelated; cursor: pointer; }
+    #state { font-variant-numeric: tabular-nums; }
+    p { max-width: 640px; margin: 0; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <h1>Live dashboard: production C/LVGL code with a virtual BMS</h1>
+  <img id="screen" src="frame.png" alt="Dashboard display" width="480" height="272" draggable="false">
+  <div id="state" aria-live="polite">connecting...</div>
+  <p>Click to tap. Hold for half a second to long-press: the main screen opens the cell table,
+     and a long press on any diagnostics page returns to main. Values come from the scenario
+     file. This runs the firmware's own code on this computer; it does not test the board's
+     LCD, touch controller, eMMC card or CAN transceiver.</p>
+  <script>
+    "use strict";
+    const screen = document.getElementById("screen");
+    const state = document.getElementById("state");
+    let pressed = false;
+    let touchQueue = Promise.resolve();
+
+    // Convert a pointer position on the scaled image into 480x272 display pixels.
+    function displayPoint(event) {
+      const box = screen.getBoundingClientRect();
+      const x = Math.round((event.clientX - box.left) * 480 / box.width);
+      const y = Math.round((event.clientY - box.top) * 272 / box.height);
+      return {x: Math.min(479, Math.max(0, x)), y: Math.min(271, Math.max(0, y))};
+    }
+
+    // Report a lost connection in the status line.
+    function showStopped() {
+      state.textContent = "simulator stopped: rerun the --live command";
+    }
+
+    // Queue one press or release for the host's touch panel; requests go strictly in order.
+    function sendTouch(event, down) {
+      const point = displayPoint(event);
+      const url = `touch?x=${point.x}&y=${point.y}&pressed=${down ? 1 : 0}`;
+      touchQueue = touchQueue.then(postTouch.bind(null, url)).catch(showStopped);
+    }
+
+    // POST one queued touch change.
+    function postTouch(url) {
+      return fetch(url, {method: "POST"});
+    }
+
+    // Request the next frame shortly after the previous one arrives, so frames never queue up.
+    function nextFrame() {
+      setTimeout(loadFrame, 100);
+    }
+
+    // Load the current framebuffer; the cache-busting query keeps each request fresh.
+    function loadFrame() {
+      screen.src = `frame.png?t=${Date.now()}`;
+    }
+
+    // Write one state reply into the status line.
+    function showState(data) {
+      state.textContent = `${(data.tick_ms / 1000).toFixed(1)} s | screen ${data.screen} | ` +
+        `${data.fault_count} malfunction events | ${data.journal}`;
+    }
+
+    // Parse a state reply.
+    function readJson(response) {
+      return response.json();
+    }
+
+    // Poll the host state every half second for the status line.
+    function pollState() {
+      fetch("state").then(readJson).then(showState).catch(showStopped)
+        .finally(schedulePoll);
+    }
+
+    // Queue the next state poll.
+    function schedulePoll() {
+      setTimeout(pollState, 500);
+    }
+
+    // Start a press where the pointer went down; capture keeps the release on this image.
+    function pressStart(event) {
+      pressed = true;
+      try {
+        screen.setPointerCapture(event.pointerId);
+      } catch (error) {
+        // Capture is optional; the press must still reach the dashboard without it.
+      }
+      sendTouch(event, true);
+    }
+
+    // End a press on release or cancellation; LVGL decides tap versus long press.
+    function pressEnd(event) {
+      if (pressed) sendTouch(event, false);
+      pressed = false;
+    }
+
+    screen.addEventListener("load", nextFrame);
+    screen.addEventListener("error", nextFrame);
+    screen.addEventListener("pointerdown", pressStart);
+    screen.addEventListener("pointerup", pressEnd);
+    screen.addEventListener("pointercancel", pressEnd);
+    pollState();
+  </script>
+</body>
+</html>

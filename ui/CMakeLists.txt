@@ -1,3 +1,9 @@
+# Purpose: Define the UI library source list, including current main/debug screens, component
+# helpers and the selected generated image/font assets.
+
+# Only these active sources enter the ui library. Legacy Screen1 and unused images/fonts
+# remain in the repository but are excluded; consumers provide LVGL include/link settings.
+# Adding Screen1 unchanged would collide with DebugScreen's ui_Image1 definition.
 SET(SOURCES components/ui_comp_label1.c
     components/ui_comp.c
     screens/ui_MainScreen.c

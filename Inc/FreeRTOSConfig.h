@@ -1,3 +1,15 @@
+/**
+ * File purpose: Configure FreeRTOS scheduling, tick rate, heap, stack-overflow detection
+ * and interrupt priorities; route failed kernel assertions to Error_Handler.
+ * The kernel uses preemption/time slicing, 1 kHz ticks, seven priority levels and a
+ * 64 KiB dynamically allocated heap_4 region. The minimal stack count is in kernel
+ * stack elements, not bytes. This is separate from the linker/libc heap and main stack.
+ * Stack-overflow check mode 2 invokes the application hook; software timers and idle/tick
+ * hooks are disabled. Mutexes/task notifications are enabled for application coordination.
+ * NVIC priorities are shifted into the hardware field; numerical priority 5 bounds the
+ * configured interrupt-safe kernel-call priority. These are settings, not measured margins.
+ */
+
 #ifndef FREERTOS_CONFIG_H
 #define FREERTOS_CONFIG_H
 
@@ -9,6 +21,14 @@
 extern "C" {
 #endif
 
+/**
+ * Terminate normal application progress after a fatal initialization/runtime error. No input,
+ * status code or recovery is provided.
+ *
+ * Disable maskable interrupts and execute NOP forever. This preserves a halted state for
+ * debugger inspection but does not save fault registers, export logs, reset the MCU or define a
+ * physical safe-output policy. Callers cannot continue after this function.
+ */
 void Error_Handler(void);
 
 #define configENABLE_MPU 0U

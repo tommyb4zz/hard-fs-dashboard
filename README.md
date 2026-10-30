@@ -1,5 +1,63 @@
 # hard-fs-dashboard
 
+## Live screens and malfunction history
+
+The dashboard uses received CAN measurements with per-signal validity/freshness; missing or
+stale values show `--`. The main screen and the red cell table are the SquareLine layouts as
+exported (the table is the original DebugFrame image with its own row captions). A pack screen
+and an append-only malfunction history are added at runtime from `Src/app_diagnostics_ui.c` in
+the same style, so re-exporting from SquareLine does not remove them. Malfunctions are recorded
+as episodes, one entry when a problem starts and one CLEAR when it ends, in a checksummed eMMC
+journal of about a million entries. See [runtime behavior, navigation, persistence and
+verification](docs/DASHBOARD_RUNTIME.md).
+
+Try the real firmware code interactively in a browser (taps and long presses go to its touch
+handling):
+
+```sh
+.venv/bin/python -m tools.dashboard_sim --live --scenario tools/can_sim/scenarios/dashboard.json --open
+```
+
+Or record a run and replay it with a screen selector and a `fault-history.csv` download:
+
+```sh
+.venv/bin/python -m tools.dashboard_sim --scenario tools/can_sim/scenarios/dashboard.json --output build/dashboard-complete --capture-every-ms 500 --open
+```
+
+On the board, console command `j` streams the whole malfunction history as CSV over the
+debug UART. Firmware auxiliary inputs (speed, drive mode, IMD/BSPD/... status) have no
+provider yet: they show unknown and are not written to the history until one is wired.
+
+## Function documentation and virtual CAN testing
+
+- [Complete code guide](docs/CODE_GUIDE.md): expanded function contracts, module explanations, startup/build, synthetic tests, UI and BDP connections.
+- [Function flowcharts](docs/FUNCTION_FLOW.md), [function inventory](docs/FUNCTIONS.md), and [interactive function explorer](docs/function-explorer.html).
+- [Virtual CAN scenarios and test commands](docs/CAN_SIMULATION.md).
+- [Editable synthetic dashboard: inputs, rendered timeline and log export](docs/SYNTHETIC_TESTING.md).
+- [Verified virtual environment repositories and hardware scope](docs/VIRTUAL_ENVIRONMENTS.md).
+- [MB1381 BDP review: missing code, required information and implementation locations](docs/BDP_GAP_ANALYSIS.md).
+- [Implementation and test evidence](docs/RESEARCH.md).
+
+Project functions include explanatory comments and script/source files include purpose headers. Upstream `Drivers/` and `lvgl/` implementations retain their dependency documentation. New input testing uses virtual CAN; physical adapter, wiring and vehicle protocol integration remain unimplemented.
+
+From the repository root:
+
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install -r tools/can_sim/requirements.txt -r tools/requirements-dev.txt
+.venv/bin/python -m tools.can_sim --demo --scenario tools/can_sim/scenarios/normal.json
+.venv/bin/python -m tools.dashboard_sim --scenario tools/can_sim/scenarios/user-inputs.json --open
+.venv/bin/python -m unittest discover -s tests -p 'test_*.py' -v
+.venv/bin/python tools/generate_function_docs.py --check
+```
+
+The dashboard command builds a host executable and writes actual LVGL captures, an animated viewer,
+decoded snapshots and validated log exports to `build/dashboard-sim/`. Edit the JSON and rerun to
+change inputs over time. `--open` opens the viewer in your default browser. The synthetic auxiliary helper is retained for explicit tests; it is not called by production firmware.
+
+The Python integration tests require CMake and a host Clang/GCC compiler with sanitizer support.
+See [production CAN host tests](tests/can_host/README.md) for the independent C suite.
+
 `hard-fs-dashboard` is an STM32H750B-DK firmware project built with STM32Cube for VS Code, CMake, LVGL, and a SquareLine-generated UI.
 
 The project runs on the Cortex-M7 core and produces:
@@ -112,6 +170,13 @@ pre-commit run clang-format --all-files -v
 ## Build
 
 The project uses CMake presets and STM32Cube for VS Code.
+
+Prerequisites: an `arm-none-eabi` GCC toolchain and a FreeRTOS kernel. The STM32 VS Code
+extension provides both (toolchain on `PATH`, FreeRTOS pack under
+`~/Library/Application Support/stm32cube/packs`). Without it, run
+`tools/fetch_firmware_deps.sh`: it fetches FreeRTOS-Kernel V10.6.2 into `build/_deps` and checks
+for a toolchain, which CMake also looks for in `build/_deps` and `/Applications/ArmGNUToolchain`.
+`-DFREERTOS_PACK_DIR=<dir>` overrides the kernel location.
 
 Typical local flow:
 - configure with the `Debug` preset

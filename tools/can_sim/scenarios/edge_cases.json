@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "duration": 20,
+  "signals": {
+    "pack_voltage_v": {
+      "interpolation": "step",
+      "points": [
+        {"t": 0, "value": 350},
+        {"t": 2, "value": 0},
+        {"t": 3, "value": 6553.5},
+        {"t": 4, "value": 350}
+      ]
+    },
+    "pack_summed_voltage_v": 350.12,
+    "pack_current_a": {
+      "interpolation": "linear",
+      "points": [
+        {"t": 0, "value": -3276.7},
+        {"t": 5, "value": 3276.7},
+        {"t": 10, "value": 0}
+      ]
+    },
+    "pack_soc_pct": {
+      "interpolation": "step",
+      "points": [
+        {"t": 0, "value": 0},
+        {"t": 2, "value": 0.5},
+        {"t": 4, "value": 99.5},
+        {"t": 6, "value": 100}
+      ]
+    },
+    "highest_temperature_c": 127,
+    "lowest_temperature_c": -128,
+    "average_temperature_c": -1,
+    "lowest_cell_voltage_v": 0,
+    "highest_cell_voltage_v": 6.5535,
+    "average_cell_voltage_v": 3.6
+  },
+  "faults": [
+    {"start": 1, "end": 2, "type": "pause"},
+    {"start": 4, "end": 5, "type": "drop", "every": 2},
+    {"start": 5, "end": 6, "type": "delay", "seconds": 0.15},
+    {"start": 6, "end": 7, "type": "wrong_id", "id": "0x123"},
+    {"start": 7, "end": 8, "type": "wrong_service", "service": "0x7F"},
+    {"start": 8, "end": 9, "type": "wrong_pci", "pci": "0x25"},
+    {"start": 9, "end": 10, "type": "short_dlc", "dlc": 3},
+    {"start": 10, "end": 11, "type": "unknown_pid", "pid": "0xFFFF"},
+    {"start": 11, "end": 12, "type": "duplicate", "count": 2, "spacing": 0.01},
+    {"start": 12, "end": 13, "type": "burst", "count": 32},
+    {"start": 14, "end": 15, "type": "raw", "signal": "pack_current_a", "value": 65535},
+    {"start": 15, "end": 16, "type": "raw", "signal": "pack_soc_pct", "value": 255}
+  ]
+}

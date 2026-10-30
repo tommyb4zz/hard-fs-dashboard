@@ -1,3 +1,17 @@
+/**
+ * Select the included HAL module headers and compile-time callback/oscillator settings for this
+ * application. HSE_VALUE is 25,000,000 Hz and is used for clock calculations; VDD_VALUE is 3300
+ * mV. These constants are not measurements. USE_RTOS=0 is the HAL configuration switch and does
+ * not disable the separately linked FreeRTOS kernel. Callback registration and optional
+ * assert_param behavior are selected below; peripheral controllers are initialized in
+ * application/BSP code.
+ */
+
+/**
+ * File purpose: Configure enabled STM32H7 HAL modules, oscillator constants, callback
+ * switches and optional HAL parameter assertions for the dashboard build.
+ */
+
 /* USER CODE BEGIN Header */
 /**
   ******************************************************************************
@@ -106,7 +120,7 @@
   *        (when HSE is used as system clock source, directly or through the PLL).
   */
 #if !defined  (HSE_VALUE)
-#define HSE_VALUE    (25000000UL) /*!< Value of the External oscillator in Hz : FPGA case fixed to 60MHZ */
+#define HSE_VALUE    (25000000UL) /*!< Configured external oscillator frequency in Hz (25 MHz) */
 #endif /* HSE_VALUE */
 
 #if !defined  (HSE_STARTUP_TIMEOUT)
@@ -498,6 +512,10 @@
   */
   #define assert_param(expr) ((expr) ? (void)0U : assert_failed((uint8_t *)__FILE__, __LINE__))
 /* Exported functions ------------------------------------------------------- */
+  /**
+   * Optional HAL assertion hook receiving source file and line. No project definition
+   * is present; enabling USE_FULL_ASSERT requires an implementation.
+   */
   void assert_failed(uint8_t *file, uint32_t line);
 #else
   #define assert_param(expr) ((void)0U)

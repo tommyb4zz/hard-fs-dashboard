@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "duration": 10,
+  "signals": {
+    "pack_voltage_v": 350,
+    "pack_summed_voltage_v": 350.12,
+    "pack_current_a": {"interpolation": "linear", "points": [
+      {"t": 0, "value": 0}, {"t": 4, "value": 80},
+      {"t": 7, "value": -20}, {"t": 10, "value": 0}
+    ]},
+    "pack_soc_pct": 90,
+    "highest_temperature_c": 45,
+    "lowest_temperature_c": 20,
+    "average_temperature_c": 30,
+    "lowest_cell_voltage_v": 3.4,
+    "highest_cell_voltage_v": 4.1,
+    "average_cell_voltage_v": 3.7
+  },
+  "auxiliary": {
+    "speed_kph": {"interpolation": "linear", "points": [
+      {"t": 0, "value": 0}, {"t": 5, "value": 100}, {"t": 10, "value": 0}
+    ]},
+    "drive_mode": {"points": [
+      {"t": 0, "value": "N"}, {"t": 1, "value": "D"}, {"t": 9, "value": "R"}
+    ]},
+    "statuses": {
+      "imd": {"points": [
+        {"t": 0, "value": "ok"}, {"t": 4, "value": "fault"}, {"t": 6, "value": "ok"}
+      ]},
+      "fault": "ok", "rtd": "ok", "tsal": "ok",
+      "bspd": "ok", "sdc": "ok", "ready_to_drive": "ok"
+    }
+  },
+  "faults": [{"type": "pause", "start": 7, "end": 8}]
+}

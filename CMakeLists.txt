@@ -1,3 +1,12 @@
+# Purpose: Build the STM32H750 firmware and its LVGL/UI/FreeRTOS libraries; select sources,
+# toolchain flags and linker layout, then emit ELF-derived HEX, internal-flash BIN and QSPI BIN
+# artifacts.
+# This is the active firmware build; the desktop simulator has a separate CMake project.
+# Source lists below select application and board/HAL implementations. UI/LVGL archives
+# receive the same CPU flags, and the linker puts their code/constants in mapped QSPI.
+# Configure requires an existing FreeRTOS kernel directory; this file does not download it
+# (tools/fetch_firmware_deps.sh fetches a pinned kernel when the ST pack is not installed).
+
 cmake_minimum_required(VERSION 3.20)
 
 project("hard-fs-dashboard")
@@ -23,6 +32,10 @@ set(sources_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/Src/app_data_log.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Src/app_emmc_log.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Src/app_tasks.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Src/app_dashboard_ui.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Src/app_diagnostics_ui.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Src/app_fault_history.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Src/app_fault_monitor.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Src/main.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Src/stm32h7xx_hal_msp.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Src/stm32h7xx_it.c
@@ -101,14 +114,29 @@ set(common_compile_options
     -fno-asynchronous-unwind-tables
 )
 
-set(FREERTOS_PACK_DIR
+# An explicit -DFREERTOS_PACK_DIR or FREERTOS_PACK_DIR environment variable wins. Otherwise use
+# the ST pack installed by the STM32 VS Code extension, then a FreeRTOS-Kernel checkout made by
+# tools/fetch_firmware_deps.sh. A cached path that no longer exists is searched again.
+set(FREERTOS_PACK_CANDIDATES
+    "$ENV{FREERTOS_PACK_DIR}"
     "$ENV{HOME}/Library/Application Support/stm32cube/packs/STMicroelectronics/freertos/2.0.0"
-    CACHE PATH
-    "Path to the ST FreeRTOS pack")
+    "${CMAKE_CURRENT_SOURCE_DIR}/build/_deps/FreeRTOS-Kernel")
+if(NOT FREERTOS_PACK_DIR OR NOT EXISTS "${FREERTOS_PACK_DIR}/tasks.c")
+    foreach(candidate IN LISTS FREERTOS_PACK_CANDIDATES)
+        if(candidate AND EXISTS "${candidate}/tasks.c")
+            set(FREERTOS_PACK_DIR "${candidate}" CACHE PATH "FreeRTOS kernel directory" FORCE)
+            break()
+        endif()
+    endforeach()
+endif()
+set(FREERTOS_PACK_DIR "${FREERTOS_PACK_DIR}" CACHE PATH "FreeRTOS kernel directory")
 
 if(NOT EXISTS "${FREERTOS_PACK_DIR}/tasks.c")
-    message(FATAL_ERROR "FreeRTOS pack not found at ${FREERTOS_PACK_DIR}")
+    message(FATAL_ERROR "FreeRTOS kernel not found (searched: ${FREERTOS_PACK_CANDIDATES}). "
+                        "Install the ST FreeRTOS pack, run tools/fetch_firmware_deps.sh, "
+                        "or pass -DFREERTOS_PACK_DIR=<kernel directory>.")
 endif()
+message(STATUS "FreeRTOS kernel: ${FREERTOS_PACK_DIR}")
 
 set(LV_CONF_PATH "${CMAKE_CURRENT_SOURCE_DIR}/lv_conf.h" CACHE PATH "LVGL configuration" FORCE)
 set(LV_BUILD_CONF_PATH "${CMAKE_CURRENT_SOURCE_DIR}/lv_conf.h" CACHE PATH "LVGL configuration" FORCE)
@@ -116,6 +144,8 @@ set(CONFIG_LV_BUILD_DEMOS OFF CACHE BOOL "Build LVGL demos" FORCE)
 set(CONFIG_LV_BUILD_EXAMPLES OFF CACHE BOOL "Build LVGL examples" FORCE)
 set(CONFIG_LV_USE_THORVG_INTERNAL OFF CACHE BOOL "Disable ThorVG in embedded builds" FORCE)
 
+# The generated UI registers its own asset/screen sources. LVGL core source discovery
+# follows its checked-in tree and excludes examples/demos/tests from firmware linkage.
 add_subdirectory("ui")
 
 file(GLOB_RECURSE lvgl_sources CONFIGURE_DEPENDS
@@ -136,6 +166,10 @@ target_compile_definitions(lvgl PUBLIC
     ${symbols_COMMON}
 )
 
+# Apply CPU and section-splitting flags to an existing library named by target_name.
+# Also mark assembly for C preprocessing. A nonexistent target is ignored; no value is
+# returned, no sources are added and no global compiler flags are changed by this helper.
+# Reusing one helper keeps the linked archives consistent with the executable's CPU ABI.
 function(configure_embedded_library target_name)
     if(TARGET ${target_name})
         target_compile_options(${target_name} PRIVATE
@@ -148,6 +182,8 @@ endfunction()
 configure_embedded_library(lvgl)
 configure_embedded_library(ui)
 
+# Build the selected kernel sources, ARM_CM4F port and heap_4 allocator. This is the
+# repository's configured port selection; its availability is not a hardware-runtime test.
 add_library(freertos_kernel STATIC
     "${FREERTOS_PACK_DIR}/event_groups.c"
     "${FREERTOS_PACK_DIR}/list.c"
@@ -203,6 +239,8 @@ target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE
     $<$<CONFIG:Release>:-Os>
 )
 
+# The linker script determines load/run addresses; --gc-sections removes unused sections.
+# nano/nosys choose embedded libc variants. The memory report/map are inspection artifacts.
 target_link_options(${CMAKE_PROJECT_NAME} PRIVATE
     -T${linker_script_SRC}
     ${cpu_PARAMS}
@@ -219,6 +257,9 @@ target_link_options(${CMAKE_PROJECT_NAME} PRIVATE
 
 set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES LINK_DEPENDS ${linker_script_SRC})
 
+# Produce HEX with linked addresses, an internal-flash binary excluding QSPI sections,
+# and a QSPI binary containing only those sections with its 0x90000000 base subtracted.
+# Generating these files does not program a board; the separate flash script does that.
 add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_SIZE} $<TARGET_FILE:${CMAKE_PROJECT_NAME}>
     COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:${CMAKE_PROJECT_NAME}> ${CMAKE_PROJECT_NAME}.hex
