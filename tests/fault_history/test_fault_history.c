@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "app_fault_history.h"
@@ -14,6 +15,7 @@
     }                                                                                              \
   } while (0)
 
+/** Compare every field of two copied events. */
 static bool same_event(const app_fault_event_t *left, const app_fault_event_t *right) {
   return left->sequence == right->sequence && left->session_id == right->session_id &&
          left->timestamp_ms == right->timestamp_ms && left->source == right->source &&
@@ -108,7 +110,7 @@ static bool guards_and_source_isolation(void) {
   return true;
 }
 
-/* A full ledger keeps every existing entry intact and explicitly counts lost transitions. */
+/* A full RAM-only ledger keeps every existing entry intact and explicitly counts losses. */
 static bool overflow_never_overwrites(void) {
   app_fault_event_t retained[APP_FAULT_HISTORY_CAPACITY];
   app_fault_event_t event = {0};
@@ -146,6 +148,7 @@ static uint32_t successful_writes[DISK_CAPACITY], write_attempts, write_order[DI
 static uint32_t write_count;
 static bool fail_writes;
 
+/** Return the modeled slot state, copying the event only for valid slots. */
 static int fake_read(uint32_t index, app_fault_event_t *event) {
   if (index >= DISK_CAPACITY || event == NULL)
     return -1;
@@ -154,6 +157,7 @@ static int fake_read(uint32_t index, app_fault_event_t *event) {
   return disk_state[index];
 }
 
+/** Write an erased slot once, recording order; injected failures and occupied slots fail. */
 static bool fake_write(uint32_t index, const app_fault_event_t *event) {
   write_attempts++;
   if (index >= DISK_CAPACITY || fail_writes || disk_state[index] != 0 || event == NULL) {
@@ -166,6 +170,7 @@ static bool fake_write(uint32_t index, const app_fault_event_t *event) {
   return true;
 }
 
+/** Place a valid event for slot index from an earlier boot. */
 static void seed_disk(uint32_t index, uint32_t session_id) {
   disk[index] = (app_fault_event_t){.sequence = index + 1U,
                                     .session_id = session_id,
@@ -241,14 +246,16 @@ static bool retry_pending_in_order(void) {
   return true;
 }
 
-/* Corrupt occupied slots stop recovery and writes, while future events remain in RAM. */
+/*
+ * A checksum-valid final record this firmware cannot interpret (wrong sequence, source or
+ * state) blocks writes; its slot and everything before it stay as found, new events live in
+ * RAM and the unreadable record keeps its place in the count.
+ */
 static bool corruption_blocks_overwrite(unsigned kind) {
   app_fault_event_t old = {0}, event = {0};
   seed_disk(0U, 10U);
   seed_disk(1U, 10U);
-  if (kind == 0U)
-    disk_state[1] = -1;
-  else if (kind == 1U)
+  if (kind == 1U)
     disk[1].sequence = 99U;
   else if (kind == 2U)
     disk[1].source = APP_FAULT_SOURCE_COUNT;
@@ -258,21 +265,155 @@ static bool corruption_blocks_overwrite(unsigned kind) {
   app_fault_history_init(1U);
   app_fault_history_attach(fake_read, fake_write, DISK_CAPACITY);
   CHECK(!app_fault_history_durable());
-  CHECK(app_fault_history_count() == 1U);
+  CHECK(app_fault_history_journal_state() == APP_FAULT_JOURNAL_BLOCKED);
+  CHECK(app_fault_history_count() == 2U);
+  CHECK(!app_fault_history_get(1U, &event));
   app_fault_history_observe(0U, APP_FAULT_STATE_ACTIVE, 8U, 10U);
   app_fault_history_observe(0U, APP_FAULT_STATE_HEALTHY, 0U, 20U);
   app_fault_history_flush();
-  CHECK(app_fault_history_pending() == 2U && app_fault_history_count() == 3U);
+  CHECK(app_fault_history_pending() == 2U && app_fault_history_count() == 4U);
   CHECK(app_fault_history_dropped() == 0U && write_attempts == 0U);
-  CHECK(app_fault_history_get(1U, &event));
-  CHECK(event.sequence == 2U && event.timestamp_ms == 10U && event.detail == 8U);
   CHECK(app_fault_history_get(2U, &event));
-  CHECK(event.sequence == 3U && event.state == APP_FAULT_STATE_HEALTHY);
+  CHECK(event.sequence == 3U && event.timestamp_ms == 10U && event.detail == 8U);
+  CHECK(app_fault_history_get(3U, &event));
+  CHECK(event.sequence == 4U && event.state == APP_FAULT_STATE_HEALTHY);
   CHECK(same_event(&old, &disk[1]));
+  CHECK(app_fault_history_get(0U, &event) && same_event(&disk[0], &event));
   return true;
 }
 
-/* Capacity exhaustion cannot write outside the journal or reuse an occupied slot. */
+/* A torn final write (unreadable last slot after a valid one) is skipped, never rewritten. */
+static bool torn_tail_is_skipped(bool first_slot) {
+  app_fault_event_t event = {0};
+  uint32_t torn = first_slot ? 0U : 2U;
+  if (!first_slot) {
+    seed_disk(0U, 10U);
+    seed_disk(1U, 11U);
+  }
+  disk_state[torn] = -1;
+  app_fault_history_init(3U);
+  app_fault_history_attach(fake_read, fake_write, DISK_CAPACITY);
+  CHECK(app_fault_history_durable());
+  CHECK(app_fault_history_count() == torn + 1U);
+  CHECK(!app_fault_history_get(torn, &event));
+  app_fault_history_observe(4U, APP_FAULT_STATE_ACTIVE, 5U, 50U);
+  CHECK(write_count == 1U && write_order[0] == torn + 1U && disk_state[torn] == -1);
+  CHECK(app_fault_history_get(torn + 1U, &event));
+  CHECK(event.sequence == torn + 2U && event.source == 4U && event.detail == 5U);
+  /* Boot IDs continue after the last readable record; the hint wins when it is larger. */
+  CHECK(event.session_id == (first_slot ? 3U : 12U));
+  return true;
+}
+
+/* Several unreadable final slots are not a torn write: treat as foreign data and block. */
+static bool foreign_data_blocks(void) {
+  for (uint32_t i = 0U; i < 4U; i++)
+    disk_state[i] = -1;
+  app_fault_history_init(1U);
+  app_fault_history_attach(fake_read, fake_write, DISK_CAPACITY);
+  CHECK(app_fault_history_journal_state() == APP_FAULT_JOURNAL_BLOCKED);
+  CHECK(app_fault_history_count() == 4U);
+  app_fault_history_observe(0U, APP_FAULT_STATE_ACTIVE, 1U, 1U);
+  CHECK(app_fault_history_pending() == 1U && write_attempts == 0U);
+  return true;
+}
+
+/* An I/O error while locating the end attaches nothing; a later attempt can still attach. */
+static int failing_read(uint32_t index, app_fault_event_t *event) {
+  (void)index;
+  (void)event;
+  return APP_FAULT_SLOT_IO_ERROR;
+}
+/** Attach once through a failing reader, then again through a working one. */
+static bool attach_io_error_is_retryable(void) {
+  seed_disk(0U, 10U);
+  app_fault_history_init(1U);
+  app_fault_history_attach(failing_read, fake_write, DISK_CAPACITY);
+  CHECK(app_fault_history_journal_state() == APP_FAULT_JOURNAL_NO_STORAGE);
+  CHECK(app_fault_history_count() == 0U && write_attempts == 0U);
+  app_fault_history_attach(fake_read, fake_write, DISK_CAPACITY);
+  CHECK(app_fault_history_journal_state() == APP_FAULT_JOURNAL_SAVED);
+  CHECK(app_fault_history_count() == 1U && app_fault_history_session() == 11U);
+  return true;
+}
+
+/*
+ * Locating the end of a large journal costs O(log capacity) reads. The reader models a
+ * journal of `end` valid slots followed by erased slots and counts every read.
+ */
+#define SEARCH_CAPACITY (1U << 20U)
+static uint32_t search_end, search_reads;
+/** Model search_end valid slots followed by erased ones, counting reads. */
+static int search_read(uint32_t index, app_fault_event_t *event) {
+  search_reads++;
+  if (index >= SEARCH_CAPACITY)
+    return APP_FAULT_SLOT_IO_ERROR;
+  if (index >= search_end)
+    return APP_FAULT_SLOT_ERASED;
+  *event = (app_fault_event_t){.sequence = index + 1U,
+                               .session_id = 7U,
+                               .timestamp_ms = index,
+                               .source = 1U,
+                               .state = APP_FAULT_STATE_ACTIVE,
+                               .detail = index};
+  return APP_FAULT_SLOT_VALID;
+}
+/** Accept only the next sequential append. */
+static bool search_write(uint32_t index, const app_fault_event_t *event) {
+  if (index != search_end || event == NULL || event->sequence != index + 1U)
+    return false;
+  search_end++;
+  return true;
+}
+/** Attach a journal of end events and check the read count, end position and next append. */
+static bool binary_search_attach(uint32_t end) {
+  app_fault_event_t event = {0};
+  search_end = end;
+  app_fault_history_init(1U);
+  app_fault_history_attach(search_read, search_write, SEARCH_CAPACITY);
+  CHECK(app_fault_history_count() == end);
+  CHECK(search_reads <= 21U + 2U);
+  CHECK(app_fault_history_journal_state() ==
+        (end == SEARCH_CAPACITY ? APP_FAULT_JOURNAL_FULL : APP_FAULT_JOURNAL_SAVED));
+  CHECK(app_fault_history_session() == (end == 0U ? 1U : 8U));
+  if (end > 0U) {
+    CHECK(app_fault_history_get(end - 1U, &event) && event.sequence == end);
+  }
+  app_fault_history_observe(2U, APP_FAULT_STATE_ACTIVE, 9U, 1U);
+  CHECK(app_fault_history_count() == end + 1U);
+  CHECK(app_fault_history_get(end, &event) && event.sequence == end + 1U);
+  if (end < SEARCH_CAPACITY) {
+    CHECK(search_end == end + 1U && app_fault_history_pending() == 0U);
+  } else {
+    CHECK(search_end == end && app_fault_history_pending() == 1U);
+  }
+  return true;
+}
+
+/* Journal state reports why events are or are not being saved, in priority order. */
+static bool journal_states(void) {
+  CHECK(app_fault_history_journal_state() == APP_FAULT_JOURNAL_NO_STORAGE);
+  app_fault_history_init(1U);
+  app_fault_history_attach(fake_read, fake_write, DISK_CAPACITY);
+  CHECK(app_fault_history_journal_state() == APP_FAULT_JOURNAL_SAVED);
+  fail_writes = true;
+  app_fault_history_observe(0U, APP_FAULT_STATE_ACTIVE, 1U, 1U);
+  CHECK(app_fault_history_journal_state() == APP_FAULT_JOURNAL_WRITE_FAILED);
+  fail_writes = false;
+  app_fault_history_flush();
+  CHECK(app_fault_history_journal_state() == APP_FAULT_JOURNAL_SAVED);
+  for (uint32_t i = 1U; i < DISK_CAPACITY; i++)
+    app_fault_history_observe(
+        0U, (i % 2U) ? APP_FAULT_STATE_HEALTHY : APP_FAULT_STATE_ACTIVE, 1U, i);
+  CHECK(app_fault_history_journal_state() == APP_FAULT_JOURNAL_FULL);
+  CHECK(app_fault_history_count() == DISK_CAPACITY && app_fault_history_pending() == 0U);
+  return true;
+}
+
+/*
+ * Capacity exhaustion cannot write outside the journal or reuse an occupied slot. This
+ * boot's new events are still listed from RAM (marked not saved) instead of being lost.
+ */
 static bool full_backend_never_overwrites(void) {
   app_fault_event_t retained[DISK_CAPACITY], event = {0};
   for (uint32_t i = 0U; i < DISK_CAPACITY; i++) {
@@ -282,13 +423,16 @@ static bool full_backend_never_overwrites(void) {
   app_fault_history_init(1U);
   app_fault_history_attach(fake_read, fake_write, DISK_CAPACITY);
   CHECK(!app_fault_history_durable());
+  CHECK(app_fault_history_journal_state() == APP_FAULT_JOURNAL_FULL);
   CHECK(app_fault_history_count() == DISK_CAPACITY && app_fault_history_pending() == 0U);
   app_fault_history_observe(0U, APP_FAULT_STATE_ACTIVE, 1U, 10U);
   app_fault_history_observe(0U, APP_FAULT_STATE_ACTIVE, 1U, 11U);
   app_fault_history_observe(0U, APP_FAULT_STATE_HEALTHY, 0U, 20U);
   app_fault_history_flush();
-  CHECK(app_fault_history_dropped() == 2U);
-  CHECK(app_fault_history_count() == DISK_CAPACITY && app_fault_history_pending() == 0U);
+  CHECK(app_fault_history_dropped() == 0U);
+  CHECK(app_fault_history_count() == DISK_CAPACITY + 2U && app_fault_history_pending() == 2U);
+  CHECK(app_fault_history_get(DISK_CAPACITY, &event) && event.sequence == DISK_CAPACITY + 1U);
+  CHECK(event.timestamp_ms == 10U && event.session_id == 13U);
   CHECK(write_attempts == 0U);
   for (uint32_t i = 0U; i < DISK_CAPACITY; i++) {
     CHECK(app_fault_history_get(i, &event) && same_event(&retained[i], &event));
@@ -330,8 +474,9 @@ static bool exhausted_session_blocks_writes(void) {
   return true;
 }
 
+/** Run the case named by argv[1] (with an optional numeric argument) in this fresh process. */
 int main(int argc, char **argv) {
-  if (argc != 2)
+  if (argc != 2 && argc != 3)
     return 2;
   bool passed;
   if (strcmp(argv[1], "lifecycle") == 0)
@@ -344,8 +489,18 @@ int main(int argc, char **argv) {
     passed = recover_and_append();
   else if (strcmp(argv[1], "retry") == 0)
     passed = retry_pending_in_order();
-  else if (strcmp(argv[1], "corrupt-read") == 0)
-    passed = corruption_blocks_overwrite(0U);
+  else if (strcmp(argv[1], "torn-tail") == 0)
+    passed = torn_tail_is_skipped(false);
+  else if (strcmp(argv[1], "torn-first") == 0)
+    passed = torn_tail_is_skipped(true);
+  else if (strcmp(argv[1], "foreign") == 0)
+    passed = foreign_data_blocks();
+  else if (strcmp(argv[1], "attach-io-error") == 0)
+    passed = attach_io_error_is_retryable();
+  else if (strcmp(argv[1], "journal-states") == 0)
+    passed = journal_states();
+  else if (strcmp(argv[1], "search") == 0 && argc == 3)
+    passed = binary_search_attach((uint32_t)strtoul(argv[2], NULL, 10));
   else if (strcmp(argv[1], "corrupt-sequence") == 0)
     passed = corruption_blocks_overwrite(1U);
   else if (strcmp(argv[1], "corrupt-source") == 0)

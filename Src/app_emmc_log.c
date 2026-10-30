@@ -34,7 +34,8 @@
 #define APP_EMMC_LOG_DUMP_FOOTER_SIZE 16U
 
 #define APP_FAULT_JOURNAL_START (APP_EMMC_LOG_START_BLOCK + APP_EMMC_LOG_RESERVED_BLOCKS)
-#define APP_FAULT_JOURNAL_SLOTS 4096U
+/* One event per 512-byte block: 2^20 slots (512 MiB) after the 128 MiB telemetry region. */
+#define APP_FAULT_JOURNAL_SLOTS 1048576U
 static uint32_t app_emmc_card_blocks;
 static bool app_emmc_io_failed;
 static uint32_t app_emmc_io_errors;
@@ -882,12 +883,13 @@ bool app_emmc_log_dump_binary(void) {
   return true;
 }
 
-/** Report separately reserved fault slots only after card discovery; never overlap telemetry. */
+/** Report reserved fault slots after card discovery, clamped to the card; never overlaps telemetry.
+ */
 uint32_t app_emmc_fault_capacity(void) {
-  return app_emmc_log_ready &&
-                 app_emmc_card_blocks >= APP_FAULT_JOURNAL_START + APP_FAULT_JOURNAL_SLOTS
-             ? APP_FAULT_JOURNAL_SLOTS
-             : 0U;
+  if (!app_emmc_log_ready || app_emmc_card_blocks <= APP_FAULT_JOURNAL_START)
+    return 0U;
+  uint32_t available = app_emmc_card_blocks - APP_FAULT_JOURNAL_START;
+  return available < APP_FAULT_JOURNAL_SLOTS ? available : APP_FAULT_JOURNAL_SLOTS;
 }
 /** Decode a portable 28-byte checksummed event inside a dedicated 512-byte slot. */
 static int app_emmc_fault_decode(const uint8_t *bytes, app_fault_event_t *event) {
@@ -897,7 +899,7 @@ static int app_emmc_fault_decode(const uint8_t *bytes, app_fault_event_t *event)
     erased_zero = erased_zero && bytes[i] == 0U;
   }
   if (erased_ff || erased_zero)
-    return 0;
+    return APP_FAULT_SLOT_ERASED;
   uint32_t values[7];
   for (unsigned i = 0; i < 7U; ++i) {
     unsigned j = i * 4U;
@@ -905,23 +907,24 @@ static int app_emmc_fault_decode(const uint8_t *bytes, app_fault_event_t *event)
                 ((uint32_t)bytes[j + 2] << 16U) | ((uint32_t)bytes[j + 3] << 24U);
   }
   if (values[0] != 0x314A4648U || values[6] != app_emmc_log_crc32_compute(bytes, 24U))
-    return -1;
+    return APP_FAULT_SLOT_CORRUPT;
   *event = (app_fault_event_t){.sequence = values[1],
                                .session_id = values[2],
                                .timestamp_ms = values[3],
                                .source = (uint16_t)values[4],
                                .state = (uint8_t)(values[4] >> 16U),
                                .detail = values[5]};
-  return 1;
+  return APP_FAULT_SLOT_VALID;
 }
-/** Read a fault slot under the same mutex as telemetry; preserve corruption as an error. */
+/** Read a fault slot under the telemetry mutex; I/O failure is reported apart from corruption. */
 int app_emmc_fault_read(uint32_t index, app_fault_event_t *event) {
   if (event == NULL || index >= app_emmc_fault_capacity() || !app_emmc_log_lock())
-    return -1;
+    return APP_FAULT_SLOT_IO_ERROR;
   uint32_t block[128];
-  int result = -1;
+  int result = APP_FAULT_SLOT_IO_ERROR;
   if (app_emmc_fault_wait_ready() &&
-      BSP_MMC_ReadBlocks(0U, block, APP_FAULT_JOURNAL_START + index, 1U) == BSP_ERROR_NONE)
+      BSP_MMC_ReadBlocks(APP_EMMC_LOG_INSTANCE, block, APP_FAULT_JOURNAL_START + index, 1U) ==
+          BSP_ERROR_NONE)
     result = app_emmc_fault_decode((const uint8_t *)block, event);
   app_emmc_log_unlock();
   return result;
@@ -929,7 +932,7 @@ int app_emmc_fault_read(uint32_t index, app_fault_event_t *event) {
 /** Wait until the card is transfer-ready; bounded polling prevents a permanent GUI stall. */
 static bool app_emmc_fault_wait_ready(void) {
   for (unsigned attempt = 0; attempt < 100000U; ++attempt) {
-    int32_t state = BSP_MMC_GetCardState(0U);
+    int32_t state = BSP_MMC_GetCardState(APP_EMMC_LOG_INSTANCE);
     if (state == MMC_TRANSFER_OK)
       return true;
     if (state != MMC_TRANSFER_BUSY)
@@ -954,15 +957,19 @@ bool app_emmc_fault_write(uint32_t index, const app_fault_event_t *event) {
     app_emmc_log_write_le32(bytes + 4U * i, values[i]);
   app_emmc_log_write_le32(bytes + 24U, app_emmc_log_crc32_compute(bytes, 24U));
   bool ok = app_emmc_fault_wait_ready() &&
-            BSP_MMC_ReadBlocks(0U, check, APP_FAULT_JOURNAL_START + index, 1U) == BSP_ERROR_NONE;
+            BSP_MMC_ReadBlocks(APP_EMMC_LOG_INSTANCE, check, APP_FAULT_JOURNAL_START + index, 1U) ==
+                BSP_ERROR_NONE;
   app_fault_event_t previous;
-  int occupied = ok ? app_emmc_fault_decode((const uint8_t *)check, &previous) : -1;
-  if (occupied == 1) {
+  int occupied =
+      ok ? app_emmc_fault_decode((const uint8_t *)check, &previous) : APP_FAULT_SLOT_IO_ERROR;
+  if (occupied == APP_FAULT_SLOT_VALID) {
     ok = memcmp(block, check, sizeof(block)) == 0;
-  } else if (occupied == 0) {
-    ok = BSP_MMC_WriteBlocks(0U, block, APP_FAULT_JOURNAL_START + index, 1U) == BSP_ERROR_NONE &&
+  } else if (occupied == APP_FAULT_SLOT_ERASED) {
+    ok = BSP_MMC_WriteBlocks(APP_EMMC_LOG_INSTANCE, block, APP_FAULT_JOURNAL_START + index, 1U) ==
+             BSP_ERROR_NONE &&
          app_emmc_fault_wait_ready() &&
-         BSP_MMC_ReadBlocks(0U, check, APP_FAULT_JOURNAL_START + index, 1U) == BSP_ERROR_NONE &&
+         BSP_MMC_ReadBlocks(APP_EMMC_LOG_INSTANCE, check, APP_FAULT_JOURNAL_START + index, 1U) ==
+             BSP_ERROR_NONE &&
          memcmp(block, check, sizeof(block)) == 0;
   } else
     ok = false;

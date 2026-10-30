@@ -7,9 +7,13 @@
  */
 #include "app_dashboard_ui.h"
 
+#include <stdarg.h>
+#include <stdio.h>
+
 #include "app_data_log.h"
+#include "app_diagnostics_ui.h"
 #include "app_emmc_log.h"
-#include "app_fault_history.h"
+#include "app_fault_monitor.h"
 #include "lvgl/lvgl.h"
 #include "ui/screens/ui_MainScreen.h"
 #include "ui/ui.h"
@@ -50,7 +54,24 @@ static int32_t app_ui_slider_from_temperature(int8_t temperature_c) {
   }
 
   return temperature_c;
-} /* Fault transitions are retained in the append-only malfunction journal. */
+}
+
+/**
+ * Format text into an LVGL label when the label exists. Screens are optional here: missing
+ * objects (for example after a SquareLine re-export without the runtime screens) are skipped
+ * instead of reaching LVGL's NULL assertion.
+ */
+static void app_ui_text(lv_obj_t *label, const char *format, ...) {
+  char text[96];
+  va_list arguments;
+  if (label == NULL) {
+    return;
+  }
+  va_start(arguments, format);
+  (void)vsnprintf(text, sizeof(text), format, arguments);
+  va_end(arguments);
+  lv_label_set_text(label, text);
+}
 
 /**
  * If label exists, convert voltage from 100-microvolt units to rounded millivolts and
@@ -274,9 +295,12 @@ void app_ui_update_aux_placeholders(app_aux_ui_state_t *state, uint32_t now_ms) 
    * their own validity and fault values directly to app_ui_apply_aux_state.
    */
   state->status_inputs_initialized = (now_ms >= APP_STATUS_BOOT_DISPLAY_MS);
+  state->speed_wired = true;
+  state->drive_mode_wired = true;
   for (uint32_t i = 0U; i < (uint32_t)APP_STATUS_SIGNAL_COUNT; ++i) {
     state->status_signals[i].fault_active = false;
     state->status_signals[i].valid = true;
+    state->status_signals[i].wired = true;
   }
 }
 
@@ -354,86 +378,69 @@ void app_ui_apply_aux_state(const app_aux_ui_state_t *state, uint32_t now_ms) {
   }
 }
 
-/**
- * Display the supplied CAN snapshot as battery labels and sliders, and show RAM/eMMC log
- * usage in debug labels; read log status but do not mutate the sample. Ignore null data.
- *
- * The snapshot uses units declared in app_can.h. Display temperature degrees, rounded cell
- * millivolts and integer kW statistics, then set temperature/current/SOC sliders. Read
- * independent RAM count/capacity and mutex-protected eMMC status for debug percentages;
- * reserve one eMMC header block and count already-written partial tails once. Null input
- * returns before logger reads. No battery freshness/validity logic is applied, so zero
- * initial and retained old values render as measurements.
- */
 /** Test validity independently for each measurement; zero is a valid received value. */
 static bool ui_fresh(const app_can_dashboard_data_t *data, unsigned signal, uint32_t now) {
   return (data->valid_mask & (1U << signal)) != 0U &&
          (uint32_t)(now - data->signal_tick_ms[signal]) <= APP_CAN_STALE_MS;
-}
-/** Format signed current to one decimal amp without discarding its sign. */
-static void ui_current(lv_obj_t *label, int16_t current) {
-  int32_t magnitude = app_ui_abs_int32(current);
-  lv_obj_set_style_text_font(label, &ui_font_TomorrowBoldItalic18, 0);
-  lv_label_set_text_fmt(
-      label, "%s%ld.%ld", current < 0 ? "-" : "", (long)(magnitude / 10), (long)(magnitude % 10));
 }
 /** Hide an unknown gauge's fill and mask; leave the existing outline visible. */
 static void ui_gauge_valid(lv_obj_t *fill, lv_obj_t *knob, bool fresh) {
   app_ui_set_object_hidden(fill, !fresh);
   app_ui_set_object_hidden(knob, !fresh);
 }
-/** Render values and diagnostics with explicit age, leaving layout independent of data. */
-static void app_ui_apply_at(const app_can_dashboard_data_t *data, uint32_t now) {
+/** LIVE for fresh, STALE for received-then-old, MISSING for never received. */
+static const char *
+ui_signal_state(const app_can_dashboard_data_t *data, unsigned signal, bool fresh) {
+  return fresh ? "LIVE" : (data->valid_mask & (1U << signal)) != 0U ? "STALE" : "MISSING";
+}
+/**
+ * Render values with explicit age, leaving layout independent of data. The cell table keeps
+ * the SquareLine rows: cell voltage, temperature, the "Battery kWh" row (since-boot power
+ * statistics in kW, as originally bound) and SPEED (filled by app_ui_refresh). Pack voltage,
+ * summed voltage, current and SOC go to the pack screen; logger and CAN counters to the
+ * history status line.
+ */
+static void app_ui_apply_at(const app_can_dashboard_data_t *data,
+                            const app_emmc_log_status_t *storage,
+                            uint32_t now) {
   if (data == NULL)
     return;
-  const bool fresh[10] = {ui_fresh(data, 0, now),
-                          ui_fresh(data, 1, now),
-                          ui_fresh(data, 2, now),
-                          ui_fresh(data, 3, now),
-                          ui_fresh(data, 4, now),
-                          ui_fresh(data, 5, now),
-                          ui_fresh(data, 6, now),
-                          ui_fresh(data, 7, now),
-                          ui_fresh(data, 8, now),
-                          ui_fresh(data, 9, now)};
+  bool fresh[APP_CAN_SIGNAL_COUNT];
+  for (unsigned i = 0U; i < APP_CAN_SIGNAL_COUNT; ++i)
+    fresh[i] = ui_fresh(data, i, now);
   lv_obj_t *temperatures[] = {
       ui_labelBatteryTempHigh, ui_labelBatteryTempAvg, ui_labelBatteryTempLow};
   const int8_t temperature[] = {
       data->highest_temperature_c, data->average_temperature_c, data->lowest_temperature_c};
-  const unsigned temp_signals[] = {4, 6, 5};
+  const unsigned temp_signals[] = {
+      APP_CAN_SIGNAL_TEMP_HIGH, APP_CAN_SIGNAL_TEMP_AVG, APP_CAN_SIGNAL_TEMP_LOW};
   lv_obj_t *cells[] = {ui_labelBatteryVoltHigh, ui_labelBatteryVoltAvg, ui_labelBatteryVoltLow};
   const uint16_t cell[] = {data->highest_cell_voltage_100uv,
                            data->average_cell_voltage_100uv,
                            data->lowest_cell_voltage_100uv};
-  const unsigned cell_signals[] = {8, 9, 7};
-  bool voltage_valid = fresh[0] || fresh[1];
-  uint16_t voltage =
-      fresh[0] ? data->pack_voltage_deci_volts : data->pack_summed_voltage_deci_volts;
-  bool power_valid = fresh[2] && voltage_valid && data->power_valid;
+  const unsigned cell_signals[] = {
+      APP_CAN_SIGNAL_CELL_HIGH, APP_CAN_SIGNAL_CELL_AVG, APP_CAN_SIGNAL_CELL_LOW};
+  bool voltage_valid =
+      fresh[APP_CAN_SIGNAL_PACK_VOLTAGE] || fresh[APP_CAN_SIGNAL_PACK_SUMMED_VOLTAGE];
+  uint16_t voltage = fresh[APP_CAN_SIGNAL_PACK_VOLTAGE] ? data->pack_voltage_deci_volts
+                                                        : data->pack_summed_voltage_deci_volts;
+  bool power_valid = fresh[APP_CAN_SIGNAL_PACK_CURRENT] && voltage_valid && data->power_valid;
   lv_obj_t *powers[] = {ui_labelBatteryPowerHigh, ui_labelBatteryPowerAvg, ui_labelBatteryPowerLow};
   const int16_t power[] = {
       data->highest_pack_power_kw, data->average_pack_power_kw, data->lowest_pack_power_kw};
-  lv_obj_t *currents[] = {ui_labelDebugSpeedHigh, ui_labelDebugSpeedAvg, ui_labelDebugSpeedLow};
-  const int16_t current[] = {data->highest_pack_current_deci_amps,
-                             data->average_pack_current_deci_amps,
-                             data->lowest_pack_current_deci_amps};
   for (unsigned i = 0; i < 3; ++i) {
     if (fresh[temp_signals[i]])
       app_ui_set_signed_integer_label(temperatures[i], temperature[i]);
     else
-      lv_label_set_text(temperatures[i], "--");
+      app_ui_text(temperatures[i], "--");
     if (fresh[cell_signals[i]])
       app_ui_set_voltage_mv_label(cells[i], cell[i]);
     else
-      lv_label_set_text(cells[i], "--");
+      app_ui_text(cells[i], "--");
     if (power_valid)
       app_ui_set_signed_integer_label(powers[i], power[i]);
     else
-      lv_label_set_text(powers[i], "--");
-    if (fresh[2])
-      ui_current(currents[i], current[i]);
-    else
-      lv_label_set_text(currents[i], "--");
+      app_ui_text(powers[i], "--");
   }
   ui_set_batt_temp_slider_value(app_ui_slider_from_temperature(data->highest_temperature_c));
   int64_t power_numerator = (int64_t)data->pack_current_deci_amps * voltage;
@@ -442,126 +449,114 @@ static void app_ui_apply_at(const app_can_dashboard_data_t *data, uint32_t now) 
                 100000);
   ui_set_power_consumption_slider_value(app_ui_abs_int32(watts_kw));
   ui_set_batt_level_slider_value(data->pack_state_of_charge);
-  ui_gauge_valid(ui_imgBattTempFill, ui_imgBattTempKnob, fresh[4]);
+  ui_gauge_valid(ui_imgBattTempFill, ui_imgBattTempKnob, fresh[APP_CAN_SIGNAL_TEMP_HIGH]);
   ui_gauge_valid(ui_imgPowerConsumptionFill, ui_imgPowerConsumptionKnob, power_valid);
-  ui_gauge_valid(ui_imgBattLevelFill, ui_imgBattLevelKnob, fresh[3]);
-  lv_obj_set_style_text_font(ui_labelBatteryTemperature, &ui_font_TomorrowBoldItalic14, 0);
-  lv_obj_set_style_text_font(ui_labelPowerConsumption, &ui_font_TomorrowBoldItalic14, 0);
-  lv_obj_set_style_text_font(ui_labelBatteryLevel, &ui_font_TomorrowBoldItalic14, 0);
-  lv_label_set_text_fmt(
-      ui_labelBatteryTemperature, fresh[4] ? "TEMP %dC" : "TEMP --", data->highest_temperature_c);
-  lv_label_set_text_fmt(
-      ui_labelPowerConsumption, power_valid ? "PWR %ldkW" : "PWR --", (long)watts_kw);
-  lv_label_set_text_fmt(
-      ui_labelBatteryLevel, fresh[3] ? "BATT %u%%" : "BATT --", data->pack_state_of_charge);
-  unsigned detail_signal[] = {0, 1, 3};
-  for (unsigned i = 0; i < 3; ++i) {
-    unsigned signal = detail_signal[i];
-    if (!fresh[signal])
-      lv_label_set_text(ui_DetailValues[i], "--");
-    else if (i == 2)
-      lv_label_set_text_fmt(ui_DetailValues[i], "%u", data->pack_state_of_charge);
-    else {
-      uint16_t v = i == 0 ? data->pack_voltage_deci_volts : data->pack_summed_voltage_deci_volts;
-      lv_label_set_text_fmt(ui_DetailValues[i], "%u.%u", v / 10U, v % 10U);
+  ui_gauge_valid(ui_imgBattLevelFill, ui_imgBattLevelKnob, fresh[APP_CAN_SIGNAL_SOC]);
+  lv_obj_t *captions[] = {
+      ui_labelBatteryTemperature, ui_labelPowerConsumption, ui_labelBatteryLevel};
+  for (unsigned i = 0; i < 3; ++i)
+    if (captions[i] != NULL)
+      lv_obj_set_style_text_font(captions[i], &ui_font_TomorrowBoldItalic14, 0);
+  if (fresh[APP_CAN_SIGNAL_TEMP_HIGH])
+    app_ui_text(ui_labelBatteryTemperature, "TEMP %dC", (int)data->highest_temperature_c);
+  else
+    app_ui_text(ui_labelBatteryTemperature, "TEMP --");
+  if (power_valid)
+    app_ui_text(ui_labelPowerConsumption, "PWR %ldkW", (long)watts_kw);
+  else
+    app_ui_text(ui_labelPowerConsumption, "PWR --");
+  if (fresh[APP_CAN_SIGNAL_SOC])
+    app_ui_text(ui_labelBatteryLevel, "BATT %u%%", (unsigned)data->pack_state_of_charge);
+  else
+    app_ui_text(ui_labelBatteryLevel, "BATT --");
+
+  const unsigned pack_signals[APP_PACK_ROW_COUNT] = {APP_CAN_SIGNAL_PACK_VOLTAGE,
+                                                     APP_CAN_SIGNAL_PACK_SUMMED_VOLTAGE,
+                                                     APP_CAN_SIGNAL_PACK_CURRENT,
+                                                     APP_CAN_SIGNAL_SOC};
+  for (unsigned row = 0; row < APP_PACK_ROW_COUNT; ++row) {
+    unsigned signal = pack_signals[row];
+    lv_obj_t *value = app_ui_pack_values[row];
+    if (!fresh[signal]) {
+      app_ui_text(value, "--");
+    } else if (row == APP_PACK_ROW_CURRENT) {
+      int32_t magnitude = app_ui_abs_int32(data->pack_current_deci_amps);
+      app_ui_text(value,
+                  "%s%ld.%ld",
+                  data->pack_current_deci_amps < 0 ? "-" : "",
+                  (long)(magnitude / 10),
+                  (long)(magnitude % 10));
+    } else if (row == APP_PACK_ROW_SOC) {
+      app_ui_text(value, "%u", (unsigned)data->pack_state_of_charge);
+    } else {
+      uint16_t volts = row == APP_PACK_ROW_VOLTAGE ? data->pack_voltage_deci_volts
+                                                   : data->pack_summed_voltage_deci_volts;
+      app_ui_text(value, "%u.%u", (unsigned)(volts / 10U), (unsigned)(volts % 10U));
     }
-    lv_label_set_text(ui_DetailStates[i],
-                      fresh[signal]                         ? "LIVE"
-                      : (data->valid_mask & (1U << signal)) ? "STALE"
-                                                            : "MISSING");
+    app_ui_text(app_ui_pack_states[row], "%s", ui_signal_state(data, signal, fresh[signal]));
   }
-  app_emmc_log_status_t storage = {0};
-  app_emmc_log_get_status(&storage);
+
   uint32_t ram =
       app_ui_calculate_usage_percent(app_data_log_get_count(), app_data_log_get_capacity());
   uint32_t emmc =
-      storage.reserved_blocks > 1U
-          ? app_ui_calculate_usage_percent(storage.written_blocks * 512U + storage.staged_bytes,
-                                           (storage.reserved_blocks - 1U) * 512U)
+      storage->reserved_blocks > 1U
+          ? app_ui_calculate_usage_percent(storage->written_blocks * 512U + storage->staged_bytes,
+                                           (storage->reserved_blocks - 1U) * 512U)
           : 0U;
-  lv_label_set_text_fmt(
-      ui_DetailValues[3], "RAM %lu%% MMC %lu%%", (unsigned long)ram, (unsigned long)emmc);
-  lv_obj_set_style_text_font(ui_DetailValues[3], &ui_font_TomorrowBoldItalic12, 0);
-  lv_label_set_text(ui_DetailStates[3],
-                    !storage.ready || storage.io_failed ? "ERROR"
-                    : storage.overflow                  ? "FULL"
-                                                        : "READY");
+  app_ui_text(app_ui_history_status,
+              "CAN timeouts %lu | bad frames %lu | RAM %lu%% | MMC %lu%% %s",
+              (unsigned long)data->request_timeouts,
+              (unsigned long)data->rejected_frames,
+              (unsigned long)ram,
+              (unsigned long)emmc,
+              !storage->ready || storage->io_failed ? "ERROR"
+              : storage->overflow                   ? "FULL"
+                                                    : "READY");
 }
 /** Compatibility binding uses LVGL time; production paths use explicit shared clock below. */
 void app_ui_apply_dashboard_data(const app_can_dashboard_data_t *data) {
-  app_ui_apply_at(data, lv_tick_get());
+  app_emmc_log_status_t storage = {0};
+  if (data == NULL)
+    return;
+  app_emmc_log_get_status(&storage);
+  app_ui_apply_at(data, &storage, lv_tick_get());
 }
-/** Render live state and append diagnostic transitions, never clearing previous events. */
+/**
+ * Fill the SquareLine SPEED row with since-boot maximum, mean and minimum km/h of valid
+ * samples. Unwired or currently unknown speed shows "--"; no speed is ever invented.
+ */
+static void app_ui_apply_speed_statistics(const app_aux_ui_state_t *aux) {
+  static uint16_t maximum, minimum;
+  static uint64_t sum;
+  static uint32_t samples;
+  if (aux->speed_valid) {
+    maximum = samples == 0U || aux->speed_kph > maximum ? aux->speed_kph : maximum;
+    minimum = samples == 0U || aux->speed_kph < minimum ? aux->speed_kph : minimum;
+    sum += aux->speed_kph;
+    if (samples != UINT32_MAX)
+      samples++;
+  }
+  if (!aux->speed_valid || samples == 0U) {
+    app_ui_text(ui_labelDebugSpeedHigh, "--");
+    app_ui_text(ui_labelDebugSpeedAvg, "--");
+    app_ui_text(ui_labelDebugSpeedLow, "--");
+    return;
+  }
+  app_ui_text(ui_labelDebugSpeedHigh, "%u", (unsigned)maximum);
+  app_ui_text(ui_labelDebugSpeedAvg, "%lu", (unsigned long)((sum + samples / 2U) / samples));
+  app_ui_text(ui_labelDebugSpeedLow, "%u", (unsigned)minimum);
+}
+/** Render live state and record malfunction episodes, never clearing previous events. */
 void app_ui_refresh(const app_can_dashboard_data_t *data,
                     const app_aux_ui_state_t *aux,
                     uint32_t now_ms) {
+  app_emmc_log_status_t storage = {0};
   if (data == NULL || aux == NULL)
     return;
-  app_ui_apply_at(data, now_ms);
-  app_ui_apply_aux_state(aux, now_ms);
-  bool all_fresh = true;
-  for (unsigned i = 0; i < APP_CAN_SIGNAL_COUNT; ++i) {
-    bool fresh = ui_fresh(data, i, now_ms);
-    all_fresh = all_fresh && fresh;
-    if (now_ms >= APP_CAN_STALE_MS || fresh)
-      app_fault_history_observe((uint16_t)i,
-                                fresh ? APP_FAULT_STATE_HEALTHY : APP_FAULT_STATE_UNKNOWN,
-                                fresh                            ? 0U
-                                : (data->valid_mask & (1U << i)) ? 1U
-                                                                 : 0U,
-                                now_ms);
-  }
-  for (unsigned i = 0; i < APP_STATUS_SIGNAL_COUNT; ++i) {
-    const app_status_signal_state_t *status = &aux->status_signals[i];
-    if (status->valid || now_ms >= APP_CAN_STALE_MS)
-      app_fault_history_observe((uint16_t)(10U + i),
-                                !status->valid         ? APP_FAULT_STATE_UNKNOWN
-                                : status->fault_active ? APP_FAULT_STATE_ACTIVE
-                                                       : APP_FAULT_STATE_HEALTHY,
-                                0,
-                                now_ms);
-  }
-  if (now_ms >= APP_CAN_STALE_MS) {
-    app_fault_history_observe(APP_FAULT_SPEED,
-                              aux->speed_valid ? APP_FAULT_STATE_HEALTHY : APP_FAULT_STATE_UNKNOWN,
-                              0,
-                              now_ms);
-    app_fault_history_observe(APP_FAULT_MODE,
-                              aux->drive_mode_valid && aux->drive_mode < APP_DRIVE_MODE_COUNT
-                                  ? APP_FAULT_STATE_HEALTHY
-                                  : APP_FAULT_STATE_UNKNOWN,
-                              0,
-                              now_ms);
-  }
-  if (data->rejected_frames != 0U)
-    app_fault_history_observe(
-        APP_FAULT_CAN_REJECTED, APP_FAULT_STATE_ACTIVE, data->rejected_frames, now_ms);
-  if (data->request_timeouts != 0U)
-    app_fault_history_observe(APP_FAULT_CAN_TIMEOUT,
-                              all_fresh ? APP_FAULT_STATE_HEALTHY : APP_FAULT_STATE_ACTIVE,
-                              data->request_timeouts,
-                              now_ms);
-  app_emmc_log_status_t storage = {0};
   app_emmc_log_get_status(&storage);
-  static uint32_t last_io_errors;
-  if (storage.io_errors != last_io_errors) {
-    app_fault_history_observe(APP_FAULT_STORAGE, APP_FAULT_STATE_ACTIVE, storage.io_errors, now_ms);
-    last_io_errors = storage.io_errors;
-  }
-  app_fault_history_observe(APP_FAULT_STORAGE,
-                            storage.ready && !storage.io_failed ? APP_FAULT_STATE_HEALTHY
-                                                                : APP_FAULT_STATE_ACTIVE,
-                            storage.io_errors,
-                            now_ms);
-  app_fault_history_observe(APP_FAULT_STORAGE_FULL,
-                            storage.overflow ? APP_FAULT_STATE_ACTIVE : APP_FAULT_STATE_HEALTHY,
-                            0,
-                            now_ms);
-  app_fault_history_flush();
-  app_fault_history_observe(21U,
-                            app_fault_history_durable() ? APP_FAULT_STATE_HEALTHY
-                                                        : APP_FAULT_STATE_ACTIVE,
-                            0,
-                            now_ms);
-  ui_fault_history_refresh();
+  app_ui_apply_at(data, &storage, now_ms);
+  app_ui_apply_aux_state(aux, now_ms);
+  app_ui_apply_speed_statistics(aux);
+  app_fault_monitor_update(data, aux, &storage, now_ms);
+  app_diagnostics_ui_refresh_history();
 }

@@ -138,7 +138,8 @@ class Host:
         except json.JSONDecodeError as error:
             raise RuntimeError("Invalid host response: " + line) from error
 
-    def step(self, tick_ms: int, auxiliary: dict, frames: list[can.Message]) -> dict:
+    def step(self, tick_ms: int, auxiliary: dict, frames: list[can.Message],
+             wired: frozenset[str] | None = None) -> dict:
         """Serialize one simulation tick, auxiliary UI state and received CAN batch.
 
         Tick uses integer milliseconds. Convert speed km/h to nearest nonnegative integer
@@ -162,7 +163,13 @@ class Host:
                 fault |= 1 << index
         if len(frames) > 128:
             raise ValueError("A host receive batch contains at most 128 frames")
-        lines = [f"T {tick_ms} {speed} {mode} {valid} {fault} {len(frames)}"]
+        header = f"T {tick_ms} {speed} {mode} {valid} {fault} {len(frames)}"
+        if wired is not None:
+            # Bits 0..6 statuses, 7 speed, 8 mode; omitted means every input is wired.
+            mask = sum(1 << index for index, name in enumerate(AUXILIARY_STATUS_NAMES) if name in wired)
+            mask |= (1 << 7 if "speed_kph" in wired else 0) | (1 << 8 if "drive_mode" in wired else 0)
+            header += f" {mask}"
+        lines = [header]
         for frame in frames:
             lines.append(f"{frame.arbitration_id:x} {int(frame.is_extended_id)} {int(frame.is_remote_frame)} {int(frame.is_fd)} {frame.data.hex() or '-'}")
         return self.command("\n".join(lines))
@@ -182,16 +189,14 @@ class Host:
             raise RuntimeError(f"Host failed to write {path}")
 
 
-def ppm_to_png(source: Path, destination: Path) -> None:
-    """Convert the actual LVGL host RGB pixels into a lossless PNG file.
+def ppm_bytes_to_png(data: bytes) -> bytes:
+    """Convert the actual LVGL host RGB pixels into lossless PNG bytes.
 
-    Read source as binary P6 PPM with newline-separated header, maximum 255, dimensions
+    data is a binary P6 PPM with newline-separated header, maximum 255, dimensions
     exactly 480x272 and exactly three bytes per pixel. Reject unexpected headers or
     length with ValueError. Prefix each scanline with PNG filter byte zero, zlib-compress
-    the unchanged RGB rows, and write signature plus IHDR/IDAT/IEND to destination.
-    Return None; existing destination is replaced and filesystem errors propagate.
-    No screenshot approximation, palette conversion or external image library is used."""
-    data = source.read_bytes()
+    the unchanged RGB rows and return signature plus IHDR/IDAT/IEND. No screenshot
+    approximation, palette conversion or external image library is used."""
     signature, dimensions, maximum, pixels = data.split(b"\n", 3)
     width, height = map(int, dimensions.split())
     if signature != b"P6" or maximum != b"255" or (width, height) != (480, 272) or len(pixels) != width * height * 3:
@@ -208,8 +213,17 @@ def ppm_to_png(source: Path, destination: Path) -> None:
 
     # PNG filter 0 carries each RGB scanline unchanged; compression is lossless.
     scanlines = b"".join(b"\0" + pixels[y * width * 3:(y + 1) * width * 3] for y in range(height))
-    destination.write_bytes(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
-                            + chunk(b"IDAT", zlib.compress(scanlines)) + chunk(b"IEND", b""))
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(scanlines)) + chunk(b"IEND", b""))
+
+
+def ppm_to_png(source: Path, destination: Path) -> None:
+    """Convert a host framebuffer PPM file into a lossless PNG file.
+
+    Read source, convert with ppm_bytes_to_png (which validates the 480x272 P6 format
+    and raises ValueError otherwise) and replace destination. Return None; filesystem
+    errors propagate."""
+    destination.write_bytes(ppm_bytes_to_png(source.read_bytes()))
 
 
 def write_viewer(output: Path, captures: list[dict]) -> None:
@@ -304,7 +318,7 @@ def run_scenario(scenario: Scenario, output: Path, executable: Path, *, step_ms:
                 frames.append(frame)
             responses += len(frames)
             auxiliary = scenario.auxiliary_at(elapsed)
-            record = host.step(tick, auxiliary, frames)
+            record = host.step(tick, auxiliary, frames, scenario.auxiliary_wired)
             record["auxiliary"] = auxiliary
             snapshots.write(json.dumps(record) + "\n")
             if record["updated"] and not record["logged"]:

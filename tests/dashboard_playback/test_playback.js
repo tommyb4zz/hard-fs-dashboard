@@ -385,6 +385,7 @@ test("screen changes keep one timestamp and reject older view loads", function s
   const select = new Element("view");
   browser.nodes.set("view", select);
   select.value = "main";
+  // Give every capture a debug and history view next to its main image.
   const items = captures().map(item => ({...item, views: {
     main: item.image, debug: "debug-" + item.image, faults: "faults-" + item.image
   }}));

@@ -43,5 +43,7 @@ bool dashboard_render_capture(const char *ppm_path);
  * peripherals are touched.
  */
 void dashboard_render_shutdown(void);
+/** Press or release the simulated touch panel at display pixel x, y. */
+void dashboard_render_touch(int32_t x, int32_t y, bool pressed);
 
 #endif /* DASHBOARD_RENDER_H */

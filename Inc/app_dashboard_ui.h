@@ -35,10 +35,15 @@ typedef enum {
   APP_STATUS_SIGNAL_COUNT
 } app_status_signal_id_t;
 
-/* valid=false means unknown; fault_active is consulted for color only when valid=true. */
+/*
+ * valid=false means unknown; fault_active is consulted for color only when valid=true.
+ * wired=true means a provider exists for this input. Unwired inputs still display as
+ * unknown, but they are not malfunctions and are never written to the fault history.
+ */
 typedef struct {
   bool fault_active;
   bool valid;
+  bool wired;
 } app_status_signal_state_t;
 
 /**
@@ -46,29 +51,35 @@ typedef struct {
  * validity flags and seven digital states. status_inputs_initialized controls the boot
  * group display in addition to now_ms; one unknown/fault keeps all indicators visible.
  * Inputs can come from the firmware demo or a host timeline; physical binding is deferred.
+ * The *_wired flags (and status_signals[].wired) are set by whichever provider supplies the
+ * input; production firmware has none yet, so all are false there.
  */
 typedef struct {
   uint16_t speed_kph;
   app_drive_mode_t drive_mode;
   bool speed_valid;
   bool drive_mode_valid;
+  bool speed_wired;
+  bool drive_mode_wired;
   bool status_inputs_initialized;
   app_status_signal_state_t status_signals[APP_STATUS_SIGNAL_COUNT];
 } app_aux_ui_state_t;
 
 /**
- * Display the supplied CAN snapshot as battery labels and sliders, and show RAM/eMMC log
- * usage in debug labels; read log status but do not mutate the sample. Ignore null data.
+ * Display the supplied CAN snapshot on the main, cell-table and pack screens using LVGL time
+ * for freshness; read log status for the diagnostics status line. Ignore null data.
  *
- * The snapshot uses units declared in app_can.h. Display temperature degrees, rounded cell
- * millivolts and integer kW statistics, then set temperature/current/SOC sliders. Read
- * independent RAM count/capacity and mutex-protected eMMC status for debug percentages;
- * reserve one eMMC header block and count already-written partial tails once. Null input
- * returns before logger reads. No battery freshness/validity logic is applied, so zero
- * initial and retained old values render as measurements.
+ * The snapshot uses units declared in app_can.h. Fresh signals show temperature degrees,
+ * rounded cell millivolts, integer kW statistics, pack volts and signed amps; missing or
+ * stale signals show "--" and hide gauge fills. Storage usage reserves one eMMC header block
+ * and counts already-written partial tails once. Speed statistics need auxiliary input and
+ * are updated only by app_ui_refresh.
  */
 void app_ui_apply_dashboard_data(const app_can_dashboard_data_t *data);
-/** Render timestamp-aware measurements and record diagnostic transitions. GUI owner only. */
+/**
+ * Render timestamp-aware measurements, accumulate speed statistics for the cell table and
+ * record malfunction episodes through app_fault_monitor. GUI owner only.
+ */
 void app_ui_refresh(const app_can_dashboard_data_t *data,
                     const app_aux_ui_state_t *aux,
                     uint32_t now_ms);
@@ -95,8 +106,8 @@ void app_ui_apply_aux_state(const app_aux_ui_state_t *state, uint32_t now_ms);
  * per qualifying call at 200 ms intervals, bouncing at 0 and 160. Missed intervals are not
  * replayed. Persistent static state is shared across calls; N/D/R advances every 5000 ms
  * after first initialization. At 3000 ms status_inputs_initialized becomes true; all seven
- * statuses are always set valid and nonfaulted. This automatic firmware demo has no reset
- * API and is bypassed by explicit host inputs.
+ * statuses are always set valid and nonfaulted, and every demo input is marked wired. This
+ * automatic demo has no reset API, is not called by firmware and is bypassed by host inputs.
  */
 void app_ui_update_aux_placeholders(app_aux_ui_state_t *state, uint32_t now_ms);
 

@@ -14,14 +14,16 @@ supply synthetic inputs for testing.
    communication health, shared real input bindings and safe screen navigation.
 3. fault-history: append-only raised/cleared/unavailable events with sequence, session,
    uptime timestamp, source and detail; immutable prior records, no clear/overwrite API.
-   Include missing/stale inputs, malformed CAN, timeouts, explicit auxiliary faults,
-   and storage errors; do not infer unprovided vehicle thresholds.
+   Record episodes (one entry at the start, one CLEAR after a hold), never per counter
+   increment. Include BMS link and per-signal loss, malformed CAN, timeouts, wired
+   auxiliary inputs and storage errors; never record unwired inputs; limits only when
+   configured from the pack/BMS specification.
 4. runtime: firmware plus sanitizer host integration, all-screen captures and CSV export.
 
 ## Storage
 A finite journal must never silently overwrite old records. Report full, corrupt or
-unavailable storage and pending/omitted events explicitly. User confirmed power-cycle retention. A separate 4096-slot eMMC journal follows the
-existing telemetry reservation; live recovery never clears recorded history. Existing telemetry export framing must remain readable.
+unavailable storage and pending/omitted events explicitly. User confirmed power-cycle retention. A separate 2^20-slot eMMC journal follows the
+existing telemetry reservation and is located at boot by binary search; live recovery never clears recorded history. Existing telemetry export framing must remain readable.
 
 ## Implementation and verification
 C11, existing LVGL 8 code/vendor sources unchanged, no new dependencies.

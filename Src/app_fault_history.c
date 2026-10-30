@@ -14,9 +14,22 @@ void app_fault_history_init(uint32_t session_id) {
   if (initialized)
     return;
   initialized = true;
-  session = session_id;
+  session = session_id == 0U ? 1U : session_id;
 }
-/** Recover consecutive checksummed slots; corruption blocks writes instead of erasing data. */
+/** Reject records whose checksum passed but whose fields this firmware cannot interpret. */
+static bool app_fault_event_shape_valid(const app_fault_event_t *event, uint32_t index) {
+  return event->sequence == index + 1U && event->source < APP_FAULT_SOURCE_COUNT &&
+         event->state <= APP_FAULT_STATE_ACTIVE;
+}
+/**
+ * Find the end of the written prefix by binary search, then check the last record.
+ *
+ * Appends are strictly sequential, so slots before the end are occupied and slots after it
+ * are erased; boot cost is O(log capacity) reads instead of one read per stored event. A
+ * corrupt final slot is a torn last write and is skipped, never rewritten. Any other
+ * inconsistency blocks new writes so the evidence stays as found. An I/O error leaves the
+ * journal detached for this boot; events are then kept in RAM.
+ */
 void app_fault_history_attach(app_fault_reader_t reader,
                               app_fault_writer_t writer,
                               uint32_t capacity) {
@@ -24,25 +37,45 @@ void app_fault_history_attach(app_fault_reader_t reader,
       writer == NULL || capacity == 0U)
     return;
   app_fault_history_init(1U);
+  app_fault_event_t event;
+  uint32_t low = 0U, high = capacity;
+  while (low < high) {
+    uint32_t middle = low + (high - low) / 2U;
+    int result = reader(middle, &event);
+    if (result == APP_FAULT_SLOT_IO_ERROR)
+      return;
+    if (result == APP_FAULT_SLOT_ERASED)
+      high = middle;
+    else
+      low = middle + 1U;
+  }
+  bool consistent = true, have_session = false;
+  uint32_t last_session = 0U;
+  if (low > 0U) {
+    int result = reader(low - 1U, &event);
+    if (result == APP_FAULT_SLOT_IO_ERROR)
+      return;
+    if (result == APP_FAULT_SLOT_VALID) {
+      consistent = app_fault_event_shape_valid(&event, low - 1U);
+      have_session = consistent;
+      last_session = event.session_id;
+    } else if (low > 1U) {
+      result = reader(low - 2U, &event);
+      if (result == APP_FAULT_SLOT_IO_ERROR)
+        return;
+      consistent = result == APP_FAULT_SLOT_VALID && app_fault_event_shape_valid(&event, low - 2U);
+      have_session = consistent;
+      last_session = event.session_id;
+    }
+  }
   read_event = reader;
   write_event = writer;
   journal_capacity = capacity;
-  app_fault_event_t event;
-  while (stored_count < capacity) {
-    int result = reader(stored_count, &event);
-    if (result == 0)
-      break;
-    if (result < 0 || event.sequence != stored_count + 1U ||
-        event.source >= APP_FAULT_SOURCE_COUNT || event.state > APP_FAULT_STATE_ACTIVE) {
-      blocked = true;
-      break;
-    }
-    if (event.session_id == UINT32_MAX)
-      blocked = true;
-    else if (event.session_id >= session)
-      session = event.session_id + 1U;
-    stored_count++;
-  }
+  stored_count = low;
+  if (!consistent || (have_session && last_session == UINT32_MAX))
+    blocked = true;
+  else if (have_session && last_session >= session)
+    session = last_session + 1U;
 }
 /** Flush queued immutable records, leaving failed and later events intact for retry. */
 void app_fault_history_flush(void) {
@@ -73,8 +106,8 @@ void app_fault_history_observe(uint16_t source, uint8_t state, uint32_t detail, 
   if (first_healthy)
     return;
   app_fault_history_flush();
-  if (pending_count == APP_FAULT_HISTORY_CAPACITY ||
-      (write_event != NULL && !blocked && stored_count + pending_count >= journal_capacity)) {
+  /* A full journal still shows this boot's events from RAM; only a full RAM queue drops. */
+  if (pending_count == APP_FAULT_HISTORY_CAPACITY) {
     if (dropped != UINT32_MAX)
       dropped++;
     return;
@@ -92,8 +125,14 @@ void app_fault_history_observe(uint16_t source, uint8_t state, uint32_t detail, 
 bool app_fault_history_get(uint32_t index, app_fault_event_t *event) {
   if (event == NULL || index >= stored_count + pending_count)
     return false;
-  if (index < stored_count)
-    return read_event(index, event) == 1;
+  if (index < stored_count) {
+    app_fault_event_t copy;
+    if (read_event(index, &copy) != APP_FAULT_SLOT_VALID ||
+        !app_fault_event_shape_valid(&copy, index))
+      return false;
+    *event = copy;
+    return true;
+  }
   *event = pending[index - stored_count];
   return true;
 }
@@ -109,9 +148,23 @@ uint32_t app_fault_history_dropped(void) {
 uint32_t app_fault_history_pending(void) {
   return pending_count;
 }
-/** Report persistence availability; full journals cannot promise future retention. */
+/** Explain persistence in priority order; full journals cannot promise future retention. */
+app_fault_journal_state_t app_fault_history_journal_state(void) {
+  if (write_event == NULL)
+    return APP_FAULT_JOURNAL_NO_STORAGE;
+  if (blocked)
+    return APP_FAULT_JOURNAL_BLOCKED;
+  if (stored_count >= journal_capacity)
+    return APP_FAULT_JOURNAL_FULL;
+  return write_failed ? APP_FAULT_JOURNAL_WRITE_FAILED : APP_FAULT_JOURNAL_SAVED;
+}
+/** Report persistence availability. */
 bool app_fault_history_durable(void) {
-  return write_event != NULL && !blocked && !write_failed && stored_count < journal_capacity;
+  return app_fault_history_journal_state() == APP_FAULT_JOURNAL_SAVED;
+}
+/** Return this boot's ID after journal recovery has advanced it past saved boots. */
+uint32_t app_fault_history_session(void) {
+  return session;
 }
 /** Name diagnostics without inventing vehicle wiring or CAN fields. */
 const char *app_fault_source_name(uint16_t source) {
@@ -139,7 +192,7 @@ const char *app_fault_source_name(uint16_t source) {
                                                             "History storage",
                                                             "Speed input",
                                                             "Drive mode input",
-                                                            "Unknown",
+                                                            "BMS link",
                                                             "Unknown",
                                                             "Unknown",
                                                             "Unknown",

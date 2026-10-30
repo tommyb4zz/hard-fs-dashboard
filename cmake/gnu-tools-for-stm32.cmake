@@ -147,8 +147,23 @@ if(CMSIS_Dsecure STREQUAL "Secure" OR CMSIS_Dsecure STREQUAL "Secure-only")
 endif()
 
 # Some default GCC settings
-# arm-none-eabi- must be part of path environment
+# arm-none-eabi- tools come from PATH (as set up by the STM32 VS Code extension). Without them
+# on PATH, fall back to an Arm GNU toolchain unpacked under build/_deps or installed by the Arm
+# macOS installer, and use full tool paths so the archiver and objcopy are found as well.
 set(TOOLCHAIN_PREFIX                arm-none-eabi-)
+# CMake reads this file more than once; the cached path keeps every pass consistent.
+find_program(ARM_NONE_EABI_GCC ${TOOLCHAIN_PREFIX}gcc)
+if(NOT ARM_NONE_EABI_GCC)
+  file(GLOB ARM_TOOLCHAIN_INSTALLER_BINS "/Applications/ArmGNUToolchain/*/arm-none-eabi/bin")
+  find_program(ARM_NONE_EABI_GCC ${TOOLCHAIN_PREFIX}gcc
+               HINTS "${CMAKE_CURRENT_LIST_DIR}/../build/_deps/arm-toolchain-expanded/Payload/bin"
+                     ${ARM_TOOLCHAIN_INSTALLER_BINS}
+               NO_DEFAULT_PATH)
+endif()
+if(ARM_NONE_EABI_GCC)
+  get_filename_component(ARM_TOOLCHAIN_BIN "${ARM_NONE_EABI_GCC}" DIRECTORY)
+  set(TOOLCHAIN_PREFIX "${ARM_TOOLCHAIN_BIN}/arm-none-eabi-")
+endif()
 set(FLAGS                           "-fdata-sections -ffunction-sections -Wl,--gc-sections -Wno-comment")
 set(CPP_FLAGS                       "${FLAGS} -fno-rtti -fno-exceptions -fno-threadsafe-statics")
 

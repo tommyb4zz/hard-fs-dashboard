@@ -4,7 +4,9 @@
 #include "app_can.h"
 #include "app_dashboard_ui.h"
 #include "app_data_log.h"
+#include "app_diagnostics_ui.h"
 #include "app_emmc_log.h"
+#include "app_fault_monitor.h"
 #include "fake_hal.h"
 #include "render.h"
 #include "lvgl/lvgl.h"
@@ -68,6 +70,16 @@ static bool split_fields(char *line, char **fields, size_t count) {
     token = strtok(NULL, " \t\r\n");
   }
   return token == NULL;
+}
+/** Split exactly minimum or minimum+1 fields; returns the number found, or zero when invalid. */
+static size_t split_optional_field(char *line, char **fields, size_t minimum) {
+  size_t found = 0;
+  for (char *token = strtok(line, " \t\r\n"); token != NULL; token = strtok(NULL, " \t\r\n")) {
+    if (found == minimum + 1U)
+      return 0;
+    fields[found++] = token;
+  }
+  return found >= minimum ? found : 0;
 }
 /**
  * Parse a complete bounded integer before narrowing; reject overflow and invalid syntax.
@@ -194,7 +206,12 @@ print_step(uint32_t tick, bool updated, bool logged, const app_can_dashboard_dat
            (unsigned long)(lv_color_to32(lv_obj_get_style_border_color(panels[i], LV_PART_MAIN)) &
                            0xFFFFFFU));
   }
-  printf("],\"valid_mask\":%u,\"fault_count\":%lu,\"fault_pending\":%lu,\"ram_count\":%lu,\"emmc_"
+  printf("],\"screen\":");
+  json_string(app_diagnostics_ui_screen_name());
+  printf(",\"journal\":%u,\"fault_dropped\":%lu",
+         (unsigned)app_fault_history_journal_state(),
+         (unsigned long)app_fault_history_dropped());
+  printf(",\"valid_mask\":%u,\"fault_count\":%lu,\"fault_pending\":%lu,\"ram_count\":%lu,\"emmc_"
          "count\":%lu,\"emmc_overflow\":%s}\n",
          data->valid_mask,
          (unsigned long)app_fault_history_count(),
@@ -208,9 +225,12 @@ print_step(uint32_t tick, bool updated, bool logged, const app_can_dashboard_dat
  * Execute validated step/capture/export commands, retaining production singleton state
  * between steps.
  *
- * Inputs: stdin commands T tick speed mode valid_mask fault_mask rx_count, following frame
- * records, P path, E path or Q. Negative speed/mode mean unknown; speed is km/h, mode is
- * 0=N/1=D/2=R and masks use seven status bits. Returns 0 for orderly completion, 1 for
+ * Inputs: stdin commands T tick speed mode valid_mask fault_mask rx_count [wired_mask],
+ * following frame records, I x y pressed, S screen, H path, P path, E path or Q. Negative
+ * speed/mode mean unknown; speed is km/h, mode is 0=N/1=D/2=R and masks use seven status
+ * bits. wired_mask adds bit 7 for speed and bit 8 for mode; when omitted every auxiliary
+ * input is treated as wired (explicit host input). I sets the simulated touch point; the
+ * next T step lets LVGL read it. Returns 0 for orderly completion, 1 for
  * initialization/read failure and 2 for malformed commands. T orders clock -> production
  * CAN poll -> conditional RAM/eMMC logging -> battery/aux UI -> LVGL timers -> JSON. P
  * refreshes/captures; E flushes and captures the logger binary stream to a file. State
@@ -222,7 +242,10 @@ int main(void) {
   app_data_log_init();
   if (!app_can_init() || !app_emmc_log_init() || !dashboard_render_init())
     return 1;
-  app_fault_history_init(1U);
+  /* Same boot sequence as the firmware GUI task: telemetry session is the boot ID. */
+  app_emmc_log_status_t boot_status = {0};
+  app_emmc_log_get_status(&boot_status);
+  app_fault_history_init(boot_status.session_id);
   app_fault_history_attach(app_emmc_fault_read, app_emmc_fault_write, app_emmc_fault_capacity());
   app_aux_ui_state_t initial_aux = {0};
   app_ui_refresh(&data, &initial_aux, 0U);
@@ -237,9 +260,10 @@ int main(void) {
     if (strcmp(line, "Q") == 0)
       break;
     if (line[0] == 'T' && line[1] == ' ') {
-      long long tick, speed, mode, valid, fault, count;
-      char *fields[6];
-      if (!split_fields(line + 2, fields, 6) ||
+      long long tick, speed, mode, valid, fault, count, wired = 0x1FF;
+      char *fields[7];
+      size_t found = split_optional_field(line + 2, fields, 6);
+      if (found == 0 || (found == 7 && !parse_integer(fields[6], 10, 0, 0x1FF, &wired)) ||
           !parse_integer(fields[0], 10, last_tick, UINT32_MAX, &tick) ||
           !parse_integer(fields[1], 10, -1, 65535, &speed) ||
           !parse_integer(fields[2], 10, -1, 2, &mode) ||
@@ -267,10 +291,13 @@ int main(void) {
       aux.speed_kph = speed >= 0 ? (uint16_t)speed : 0;
       aux.drive_mode_valid = mode >= 0;
       aux.drive_mode = mode >= 0 ? (app_drive_mode_t)mode : APP_DRIVE_MODE_NEUTRAL;
+      aux.speed_wired = (wired & (1 << 7)) != 0;
+      aux.drive_mode_wired = (wired & (1 << 8)) != 0;
       aux.status_inputs_initialized = true;
       for (unsigned i = 0; i < APP_STATUS_SIGNAL_COUNT; i++) {
         aux.status_signals[i].valid = (valid & (1U << i)) != 0;
         aux.status_signals[i].fault_active = (fault & (1U << i)) != 0;
+        aux.status_signals[i].wired = (wired & (1 << i)) != 0;
       }
       app_ui_refresh(&data, &aux, last_tick);
       dashboard_render_step(last_tick);
@@ -278,12 +305,12 @@ int main(void) {
     } else if (line[0] == 'S' && line[1] == ' ') {
       lv_obj_t *screen = strcmp(line + 2, "main") == 0     ? ui_MainScreen
                          : strcmp(line + 2, "debug") == 0  ? ui_DebugScreen
-                         : strcmp(line + 2, "pack") == 0   ? ui_DetailScreen
-                         : strcmp(line + 2, "faults") == 0 ? ui_FaultScreen
+                         : strcmp(line + 2, "pack") == 0   ? app_ui_pack_screen
+                         : strcmp(line + 2, "faults") == 0 ? app_ui_history_screen
                                                            : NULL;
       if (screen == NULL)
         return 2;
-      ui_fault_history_refresh();
+      app_diagnostics_ui_refresh_history();
       lv_disp_load_scr(screen);
       printf("{\"ok\":true}\n");
       fflush(stdout);
@@ -291,23 +318,41 @@ int main(void) {
       FILE *file = fopen(line + 2, "w");
       bool ok = file != NULL;
       if (ok) {
-        ok = fprintf(file, "sequence,boot,uptime_ms,source,state,detail\n") > 0;
+        ok = fprintf(file, "sequence,boot,uptime_ms,source,state,detail,description\n") > 0;
         for (uint32_t i = 0; ok && i < app_fault_history_count(); ++i) {
           app_fault_event_t event;
-          ok = app_fault_history_get(i, &event);
-          if (ok)
-            ok = fprintf(file,
-                         "%lu,%lu,%lu,%s,%u,%lu\n",
-                         (unsigned long)event.sequence,
-                         (unsigned long)event.session_id,
-                         (unsigned long)event.timestamp_ms,
-                         app_fault_source_name(event.source),
-                         event.state,
-                         (unsigned long)event.detail) > 0;
+          char description[96];
+          if (!app_fault_history_get(i, &event)) {
+            /* An unreadable slot keeps its place and sequence number in the export. */
+            ok = fprintf(file, "%lu,,,,,,unreadable record\n", (unsigned long)i + 1U) > 0;
+            continue;
+          }
+          app_fault_describe(&event, description, sizeof(description));
+          ok = fprintf(file,
+                       "%lu,%lu,%lu,%s,%u,%lu,%s\n",
+                       (unsigned long)event.sequence,
+                       (unsigned long)event.session_id,
+                       (unsigned long)event.timestamp_ms,
+                       app_fault_source_name(event.source),
+                       event.state,
+                       (unsigned long)event.detail,
+                       description) > 0;
         }
         ok = fclose(file) == 0 && ok;
       }
       printf("{\"ok\":%s}\n", ok ? "true" : "false");
+      fflush(stdout);
+    } else if (line[0] == 'I' && line[1] == ' ') {
+      long long x, y, pressed;
+      char *fields[3];
+      if (!split_fields(line + 2, fields, 3) || !parse_integer(fields[0], 10, 0, 479, &x) ||
+          !parse_integer(fields[1], 10, 0, 271, &y) ||
+          !parse_integer(fields[2], 10, 0, 1, &pressed)) {
+        fprintf(stderr, "Invalid touch command\n");
+        return 2;
+      }
+      dashboard_render_touch((int32_t)x, (int32_t)y, pressed != 0);
+      printf("{\"ok\":true}\n");
       fflush(stdout);
     } else if ((line[0] == 'P' || line[0] == 'E') && line[1] == ' ' && line[2]) {
       bool ok;

@@ -60,11 +60,7 @@ void ui_DebugScreen_screen_init(void) {
       ui_DebugScreen, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
   lv_obj_set_style_bg_opa(ui_DebugScreen, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-  static const char *const headers[] = {"HIGH", "AVG", "LOW"};
-  static const char *const rows[] = {"Cell mV", "Temp C", "Power kW", "Current A"};
-  ui_diagnostics_grid(ui_DebugScreen, headers, rows);
   ui_Image1 = lv_img_create(ui_DebugScreen);
-  lv_obj_add_flag(ui_Image1, LV_OBJ_FLAG_HIDDEN);
   lv_img_set_src(ui_Image1, &ui_img_debugframe_png);
   lv_obj_set_width(ui_Image1, LV_SIZE_CONTENT);  /// 460
   lv_obj_set_height(ui_Image1, LV_SIZE_CONTENT); /// 122
@@ -82,7 +78,7 @@ void ui_DebugScreen_screen_init(void) {
   lv_obj_set_x(ui_labelBatteryVoltHigh, -25);
   lv_obj_set_y(ui_labelBatteryVoltHigh, -61);
   lv_obj_set_align(ui_labelBatteryVoltHigh, LV_ALIGN_CENTER);
-  lv_label_set_text(ui_labelBatteryVoltHigh, "--");
+  lv_label_set_text(ui_labelBatteryVoltHigh, "0");
   lv_obj_set_style_text_color(
       ui_labelBatteryVoltHigh, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
   lv_obj_set_style_text_opa(ui_labelBatteryVoltHigh, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -95,7 +91,7 @@ void ui_DebugScreen_screen_init(void) {
   lv_obj_set_x(ui_labelBatteryVoltAvg, 80);
   lv_obj_set_y(ui_labelBatteryVoltAvg, -61);
   lv_obj_set_align(ui_labelBatteryVoltAvg, LV_ALIGN_CENTER);
-  lv_label_set_text(ui_labelBatteryVoltAvg, "--");
+  lv_label_set_text(ui_labelBatteryVoltAvg, "0");
   lv_obj_set_style_text_color(
       ui_labelBatteryVoltAvg, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
   lv_obj_set_style_text_opa(ui_labelBatteryVoltAvg, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -108,7 +104,7 @@ void ui_DebugScreen_screen_init(void) {
   lv_obj_set_x(ui_labelBatteryVoltLow, 176);
   lv_obj_set_y(ui_labelBatteryVoltLow, -61);
   lv_obj_set_align(ui_labelBatteryVoltLow, LV_ALIGN_CENTER);
-  lv_label_set_text(ui_labelBatteryVoltLow, "--");
+  lv_label_set_text(ui_labelBatteryVoltLow, "0");
   lv_obj_set_style_text_color(
       ui_labelBatteryVoltLow, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
   lv_obj_set_style_text_opa(ui_labelBatteryVoltLow, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -122,7 +118,7 @@ void ui_DebugScreen_screen_init(void) {
   lv_obj_set_x(ui_labelBatteryTempHigh, -25);
   lv_obj_set_y(ui_labelBatteryTempHigh, -8);
   lv_obj_set_align(ui_labelBatteryTempHigh, LV_ALIGN_CENTER);
-  lv_label_set_text(ui_labelBatteryTempHigh, "--");
+  lv_label_set_text(ui_labelBatteryTempHigh, "0");
   lv_obj_set_style_text_color(
       ui_labelBatteryTempHigh, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
   lv_obj_set_style_text_opa(ui_labelBatteryTempHigh, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -135,7 +131,7 @@ void ui_DebugScreen_screen_init(void) {
   lv_obj_set_x(ui_labelBatteryTempAvg, 80);
   lv_obj_set_y(ui_labelBatteryTempAvg, -8);
   lv_obj_set_align(ui_labelBatteryTempAvg, LV_ALIGN_CENTER);
-  lv_label_set_text(ui_labelBatteryTempAvg, "--");
+  lv_label_set_text(ui_labelBatteryTempAvg, "0");
   lv_obj_set_style_text_color(
       ui_labelBatteryTempAvg, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
   lv_obj_set_style_text_opa(ui_labelBatteryTempAvg, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -148,7 +144,7 @@ void ui_DebugScreen_screen_init(void) {
   lv_obj_set_x(ui_labelBatteryTempLow, 176);
   lv_obj_set_y(ui_labelBatteryTempLow, -8);
   lv_obj_set_align(ui_labelBatteryTempLow, LV_ALIGN_CENTER);
-  lv_label_set_text(ui_labelBatteryTempLow, "--");
+  lv_label_set_text(ui_labelBatteryTempLow, "0");
   lv_obj_set_style_text_color(
       ui_labelBatteryTempLow, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
   lv_obj_set_style_text_opa(ui_labelBatteryTempLow, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -162,7 +158,7 @@ void ui_DebugScreen_screen_init(void) {
   lv_obj_set_x(ui_labelBatteryPowerHigh, -25);
   lv_obj_set_y(ui_labelBatteryPowerHigh, 44);
   lv_obj_set_align(ui_labelBatteryPowerHigh, LV_ALIGN_CENTER);
-  lv_label_set_text(ui_labelBatteryPowerHigh, "--");
+  lv_label_set_text(ui_labelBatteryPowerHigh, "0");
   lv_obj_set_style_text_color(
       ui_labelBatteryPowerHigh, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
   lv_obj_set_style_text_opa(ui_labelBatteryPowerHigh, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -175,7 +171,7 @@ void ui_DebugScreen_screen_init(void) {
   lv_obj_set_x(ui_labelBatteryPowerAvg, 80);
   lv_obj_set_y(ui_labelBatteryPowerAvg, 44);
   lv_obj_set_align(ui_labelBatteryPowerAvg, LV_ALIGN_CENTER);
-  lv_label_set_text(ui_labelBatteryPowerAvg, "--");
+  lv_label_set_text(ui_labelBatteryPowerAvg, "0");
   lv_obj_set_style_text_color(
       ui_labelBatteryPowerAvg, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
   lv_obj_set_style_text_opa(ui_labelBatteryPowerAvg, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -188,7 +184,7 @@ void ui_DebugScreen_screen_init(void) {
   lv_obj_set_x(ui_labelBatteryPowerLow, 176);
   lv_obj_set_y(ui_labelBatteryPowerLow, 44);
   lv_obj_set_align(ui_labelBatteryPowerLow, LV_ALIGN_CENTER);
-  lv_label_set_text(ui_labelBatteryPowerLow, "--");
+  lv_label_set_text(ui_labelBatteryPowerLow, "0");
   lv_obj_set_style_text_color(
       ui_labelBatteryPowerLow, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
   lv_obj_set_style_text_opa(ui_labelBatteryPowerLow, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -204,7 +200,7 @@ void ui_DebugScreen_screen_init(void) {
   lv_obj_set_x(ui_labelDebugSpeedHigh, -25);
   lv_obj_set_y(ui_labelDebugSpeedHigh, 95);
   lv_obj_set_align(ui_labelDebugSpeedHigh, LV_ALIGN_CENTER);
-  lv_label_set_text(ui_labelDebugSpeedHigh, "--");
+  lv_label_set_text(ui_labelDebugSpeedHigh, "0");
   lv_obj_set_style_text_color(
       ui_labelDebugSpeedHigh, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
   lv_obj_set_style_text_opa(ui_labelDebugSpeedHigh, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -217,7 +213,7 @@ void ui_DebugScreen_screen_init(void) {
   lv_obj_set_x(ui_labelDebugSpeedAvg, 80);
   lv_obj_set_y(ui_labelDebugSpeedAvg, 95);
   lv_obj_set_align(ui_labelDebugSpeedAvg, LV_ALIGN_CENTER);
-  lv_label_set_text(ui_labelDebugSpeedAvg, "--");
+  lv_label_set_text(ui_labelDebugSpeedAvg, "0");
   lv_obj_set_style_text_color(
       ui_labelDebugSpeedAvg, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
   lv_obj_set_style_text_opa(ui_labelDebugSpeedAvg, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -230,7 +226,7 @@ void ui_DebugScreen_screen_init(void) {
   lv_obj_set_x(ui_labelDebugSpeedLow, 176);
   lv_obj_set_y(ui_labelDebugSpeedLow, 95);
   lv_obj_set_align(ui_labelDebugSpeedLow, LV_ALIGN_CENTER);
-  lv_label_set_text(ui_labelDebugSpeedLow, "--");
+  lv_label_set_text(ui_labelDebugSpeedLow, "0");
   lv_obj_set_style_text_color(
       ui_labelDebugSpeedLow, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
   lv_obj_set_style_text_opa(ui_labelDebugSpeedLow, 255, LV_PART_MAIN | LV_STATE_DEFAULT);

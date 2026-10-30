@@ -2,19 +2,31 @@
 
 ## Live screens and malfunction history
 
-The dashboard uses received CAN measurements with per-signal validity/freshness. Missing
-values show unknown. Cell/current diagnostics, pack/storage details and an append-only
-malfunction screen follow the existing gauge and red-table layouts. History is recovered
-from a separate checksummed eMMC journal across boots; full/failed storage is visible.
-See [runtime behavior, navigation, persistence limits and verification](docs/DASHBOARD_RUNTIME.md).
+The dashboard uses received CAN measurements with per-signal validity/freshness; missing or
+stale values show `--`. The main screen and the red cell table are the SquareLine layouts as
+exported (the table is the original DebugFrame image with its own row captions). A pack screen
+and an append-only malfunction history are added at runtime from `Src/app_diagnostics_ui.c` in
+the same style, so re-exporting from SquareLine does not remove them. Malfunctions are recorded
+as episodes, one entry when a problem starts and one CLEAR when it ends, in a checksummed eMMC
+journal of about a million entries. See [runtime behavior, navigation, persistence and
+verification](docs/DASHBOARD_RUNTIME.md).
+
+Try the real firmware code interactively in a browser (taps and long presses go to its touch
+handling):
+
+```sh
+.venv/bin/python -m tools.dashboard_sim --live --scenario tools/can_sim/scenarios/dashboard.json --open
+```
+
+Or record a run and replay it with a screen selector and a `fault-history.csv` download:
 
 ```sh
 .venv/bin/python -m tools.dashboard_sim --scenario tools/can_sim/scenarios/dashboard.json --output build/dashboard-complete --capture-every-ms 500 --open
 ```
 
-Use the browser **Screen** selector to inspect all four recorded views and download
-`fault-history.csv`. Firmware auxiliary inputs remain unknown until their actual vehicle
-mapping is supplied; production firmware no longer generates demo speed or healthy states.
+On the board, console command `j` streams the whole malfunction history as CSV over the
+debug UART. Firmware auxiliary inputs (speed, drive mode, IMD/BSPD/... status) have no
+provider yet: they show unknown and are not written to the history until one is wired.
 
 ## Function documentation and virtual CAN testing
 
@@ -158,6 +170,13 @@ pre-commit run clang-format --all-files -v
 ## Build
 
 The project uses CMake presets and STM32Cube for VS Code.
+
+Prerequisites: an `arm-none-eabi` GCC toolchain and a FreeRTOS kernel. The STM32 VS Code
+extension provides both (toolchain on `PATH`, FreeRTOS pack under
+`~/Library/Application Support/stm32cube/packs`). Without it, run
+`tools/fetch_firmware_deps.sh`: it fetches FreeRTOS-Kernel V10.6.2 into `build/_deps` and checks
+for a toolchain, which CMake also looks for in `build/_deps` and `/Applications/ArmGNUToolchain`.
+`-DFREERTOS_PACK_DIR=<dir>` overrides the kernel location.
 
 Typical local flow:
 - configure with the `Debug` preset

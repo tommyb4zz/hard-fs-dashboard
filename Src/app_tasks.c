@@ -1,9 +1,10 @@
 /**
  * File purpose: Create and run the FreeRTOS GUI, CAN acquisition and UART console tasks. A
  * one-element overwrite queue transfers the latest full battery snapshot to the GUI, while
- * acquisition records measurements in RAM/eMMC. The GUI owns LVGL; unbound auxiliary
- * inputs remain unknown. Console commands inspect/reset/export logs. This coordination
- * does not bind real speed/mode/status inputs or recover failed peripherals.
+ * acquisition records measurements in RAM/eMMC. The GUI owns LVGL and the malfunction
+ * history; unbound auxiliary inputs remain unknown and unwired. Console commands
+ * inspect/reset/export logs and stream the history. This coordination does not bind real
+ * speed/mode/status inputs or recover failed peripherals.
  */
 
 #include "app_tasks.h"
@@ -14,8 +15,10 @@
 #include "app_can.h"
 #include "app_dashboard_ui.h"
 #include "app_data_log.h"
+#include "app_diagnostics_ui.h"
 #include "app_emmc_log.h"
 #include "app_fault_history.h"
+#include "app_fault_monitor.h"
 #include "main.h"
 
 #include "FreeRTOS.h"
@@ -29,6 +32,9 @@
 
 /* Queue length is one: acquisition overwrites old UI work so the GUI sees latest state. */
 static QueueHandle_t app_ui_queue = NULL;
+/* Console request for a history dump; the GUI task owns the history and streams it. */
+static volatile bool app_fault_dump_requested = false;
+#define APP_FAULT_DUMP_EVENTS_PER_PASS 4U
 
 /* Stack sizes are FreeRTOS words; periods are milliseconds converted with pdMS_TO_TICKS.
  * GUI/console priority is idle+1; acquisition idle+2. No task handles are retained. */
@@ -56,7 +62,7 @@ static QueueHandle_t app_ui_queue = NULL;
 static void app_console_print_help(void) {
   printf("[console] commands: h=help i=ram-log-info d=ram-dump c=ram-clear "
          "e=emmc-info p=emmc-dump-csv b=script-bin-dump x=emmc-reset "
-         "f=emmc-flush v=toggle-can-debug\r\n");
+         "f=emmc-flush j=fault-history-csv v=toggle-can-debug\r\n");
 }
 
 /**
@@ -186,6 +192,11 @@ static void app_console_handle_command(uint8_t command) {
     }
     break;
 
+  case 'j':
+  case 'J':
+    app_fault_dump_requested = true;
+    break;
+
   case 'v':
   case 'V':
     app_can_set_debug_enabled(!app_can_is_debug_enabled());
@@ -204,13 +215,53 @@ static void app_console_handle_command(uint8_t command) {
 }
 
 /**
+ * Print a few history events per GUI pass as CSV, oldest first, so a long history neither
+ * stalls the display nor races the history owner. next is the following index, or
+ * UINT32_MAX when no dump is in progress.
+ */
+static void app_fault_dump_step(uint32_t *next) {
+  char description[96];
+  app_fault_event_t event;
+  if (app_fault_dump_requested) {
+    app_fault_dump_requested = false;
+    *next = 0U;
+    printf("[console] fault history begin\r\nsequence,boot,uptime_ms,source,state,detail,"
+           "description\r\n");
+  }
+  if (*next == UINT32_MAX) {
+    return;
+  }
+  for (uint32_t i = 0U; i < APP_FAULT_DUMP_EVENTS_PER_PASS && *next < app_fault_history_count();
+       ++i, ++*next) {
+    if (!app_fault_history_get(*next, &event)) {
+      printf("%lu,,,,,,unreadable record\r\n", (unsigned long)*next + 1U);
+      continue;
+    }
+    app_fault_describe(&event, description, sizeof(description));
+    printf("%lu,%lu,%lu,%s,%u,%lu,%s\r\n",
+           (unsigned long)event.sequence,
+           (unsigned long)event.session_id,
+           (unsigned long)event.timestamp_ms,
+           app_fault_source_name(event.source),
+           (unsigned)event.state,
+           (unsigned long)event.detail,
+           description);
+  }
+  if (*next >= app_fault_history_count()) {
+    printf("[console] fault history end\r\n");
+    *next = UINT32_MAX;
+  }
+}
+
+/**
  * FreeRTOS entry point with an unused argument: initialize LVGL, LCD, touch and screens,
  * then consume the latest CAN snapshot, refresh live diagnostics and service LVGL on
  * the configured 5 ms schedule; never return.
  *
  * argument is unused. The task alone owns normal LVGL calls: initialize
  * library/display/touch/generated objects before any binding, drain the queue without
- * waiting, and refresh measurements/fault transitions every 100 ms. LVGL time advances
+ * waiting, refresh measurements/malfunction episodes every 100 ms and stream a requested
+ * history dump a few rows per pass. LVGL time advances
  * by measured HAL elapsed time, including storage delays; services timers, then
  * delays against last_wake. Queue overwrites can omit intermediate UI states; LCD fatal
  * errors halt, touch initialization can silently return.
@@ -218,10 +269,12 @@ static void app_console_handle_command(uint8_t command) {
 static void app_gui_task(void *argument) {
   app_aux_ui_state_t aux_state = {0};
   app_can_dashboard_data_t data = {0};
+  app_emmc_log_status_t storage = {0};
   TickType_t last_wake = xTaskGetTickCount();
   uint32_t last_refresh_ms = 0U;
   uint32_t last_lv_tick = HAL_GetTick();
   uint32_t now_ms = 0U;
+  uint32_t dump_next = UINT32_MAX;
 
   (void)argument;
 
@@ -229,7 +282,10 @@ static void app_gui_task(void *argument) {
   LCD_init();
   touchpad_init();
   ui_init();
-  app_fault_history_init(1U);
+  app_diagnostics_ui_init();
+  /* Telemetry's session ID is the boot ID; journal recovery advances it past saved boots. */
+  app_emmc_log_get_status(&storage);
+  app_fault_history_init(storage.session_id);
   app_fault_history_attach(app_emmc_fault_read, app_emmc_fault_write, app_emmc_fault_capacity());
   app_ui_refresh(&data, &aux_state, HAL_GetTick());
 
@@ -241,6 +297,7 @@ static void app_gui_task(void *argument) {
       app_ui_refresh(&data, &aux_state, now_ms);
       last_refresh_ms = now_ms;
     }
+    app_fault_dump_step(&dump_next);
 
     uint32_t tick = HAL_GetTick();
     lv_tick_inc(tick - last_lv_tick);

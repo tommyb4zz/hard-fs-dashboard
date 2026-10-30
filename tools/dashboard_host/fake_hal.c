@@ -1,6 +1,8 @@
 /* Purpose: implement memory-only HAL/BSP boundaries for deterministic host dashboard tests.
  * These fakes do not model MCU registers, arbitration, electrical faults or RTOS scheduling. */
 #include "fake_hal.h"
+/* Reserved prefix, 128 MiB telemetry and the 2^20-slot fault journal; a sparse file backs it. */
+#define DASHBOARD_HOST_CARD_BLOCKS (4096U + 262144U + 1048576U)
 #include "semphr.h"
 #include "stm32h745i_discovery_mmc.h"
 #include <stdio.h>
@@ -299,7 +301,7 @@ int32_t BSP_MMC_Init(uint32_t instance) {
 int32_t BSP_MMC_GetCardInfo(uint32_t instance, BSP_MMC_CardInfo *info) {
   if (instance != 0U || info == NULL)
     return -1;
-  info->LogBlockNbr = 4096U + 262144U + 4096U;
+  info->LogBlockNbr = DASHBOARD_HOST_CARD_BLOCKS;
   return BSP_ERROR_NONE;
 }
 /**
@@ -310,7 +312,8 @@ int32_t BSP_MMC_GetCardInfo(uint32_t instance, BSP_MMC_CardInfo *info) {
  * overflow from block+count; storage remains unchanged.
  */
 static bool storage_range(uint32_t block, uint32_t count) {
-  return block >= 4096U && block < 270336U && count > 0U && count <= 270336U - block;
+  return block >= 4096U && block < DASHBOARD_HOST_CARD_BLOCKS && count > 0U &&
+         count <= DASHBOARD_HOST_CARD_BLOCKS - block;
 }
 /**
  * Read bounded fake blocks.

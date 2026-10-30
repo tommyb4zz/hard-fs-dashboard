@@ -337,6 +337,7 @@ function mountPlayback(captures, document, window) {
     requestCapture(state.index);
   }
 
+  // Switching screens reloads the same capture time in the newly selected view.
   if (viewControl) viewControl.addEventListener("change", function changeScreen() {
     const index = requestedIndex;
     requestedIndex = -1;

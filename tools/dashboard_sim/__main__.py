@@ -3,7 +3,8 @@
 The CLI builds the sanitizer host, preserves exact input JSON, runs deterministic
 virtual-CAN steps and optionally opens the completed recorded player. Inputs can
 vary over time through the JSON schema; the saved browser view plays the resulting
-capture sequence and does not mutate a running firmware process."""
+capture sequence and does not mutate a running firmware process. --live instead runs
+the same production code in real time behind a local page that accepts touches."""
 import argparse
 import json
 from pathlib import Path
@@ -11,7 +12,34 @@ import sys
 import webbrowser
 
 from tools.can_sim.scenario import Scenario
+from .live import LiveDashboard, make_server
 from .runner import ROOT, DEFAULT_CAPTURE_EVERY_MS, build_host, run_scenario
+
+
+def run_live(scenario: Scenario, port: int, open_browser: bool, storage: Path | None) -> int:
+    """Serve the running dashboard on 127.0.0.1:port until interrupted; return 0.
+
+    Build the sanitizer host, start real-time stepping and print the page URL. Ctrl+C
+    stops the server, then the host (its exit status is checked) and the virtual buses."""
+    dashboard = LiveDashboard(build_host(), scenario, storage)
+    server = make_server(dashboard, port)  # Bind first: a busy port fails before the host starts.
+    try:
+        dashboard.start()
+    except BaseException:
+        server.server_close()
+        raise
+    url = f"http://127.0.0.1:{server.server_address[1]}/"
+    print(f"Live dashboard running at {url} (Ctrl+C to stop)", flush=True)
+    if open_browser:
+        webbrowser.open(url)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.server_close()
+        dashboard.stop()
+    return 0
 
 
 def main() -> int:
@@ -36,7 +64,18 @@ def main() -> int:
     parser.add_argument("--capture-every-ms", type=int, default=DEFAULT_CAPTURE_EVERY_MS,
                         help="capture interval, default 100 ms; 0 disables images")
     parser.add_argument("--open", action="store_true", help="open the completed animated viewer in the default browser")
+    parser.add_argument("--live", action="store_true",
+                        help="run the dashboard in real time behind an interactive local page instead of recording")
+    parser.add_argument("--port", type=int, default=8765, help="--live page port on 127.0.0.1 (0 picks a free one)")
+    parser.add_argument("--storage-file", type=Path,
+                        help="--live fake eMMC card file kept between runs; never a device or unrelated file")
     arguments = parser.parse_args()
+    if arguments.live:
+        try:
+            scenario = Scenario.from_text(arguments.scenario.read_text())
+            return run_live(scenario, arguments.port, arguments.open, arguments.storage_file)
+        except (OSError, ValueError, RuntimeError) as error:
+            parser.exit(1, f"{error}\n")
     try:
         # Preserve exactly the file that was parsed, not a later reread or reserialized JSON.
         scenario_bytes = arguments.scenario.read_bytes()

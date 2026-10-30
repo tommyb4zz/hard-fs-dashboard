@@ -8,7 +8,6 @@ SET(SOURCES components/ui_comp_label1.c
     components/ui_comp.c
     screens/ui_MainScreen.c
     screens/ui_DebugScreen.c
-    screens/ui_Diagnostics.c
     ui.c
     components/ui_comp_hook.c
     ui_helpers.c

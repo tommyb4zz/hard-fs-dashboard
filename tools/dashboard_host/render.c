@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "app_diagnostics_ui.h"
 #include "lvgl/lvgl.h"
 #include "ui/ui.h"
 
@@ -20,6 +21,11 @@ static lv_disp_draw_buf_t dashboard_draw_buffer_descriptor;
 static lv_disp_drv_t dashboard_display_driver;
 static lv_disp_t *dashboard_display = NULL;
 static uint32_t dashboard_last_tick_ms = 0U;
+/* Simulated touch panel, read by LVGL every LV_INDEV_DEF_READ_PERIOD like the board's FT5336. */
+static lv_indev_drv_t dashboard_touch_driver;
+static lv_indev_t *dashboard_touch = NULL;
+static lv_point_t dashboard_touch_point;
+static bool dashboard_touch_pressed = false;
 
 /**
  * Copy the LVGL area-sized pixel buffer into matching framebuffer coordinates, clipping
@@ -45,6 +51,29 @@ dashboard_render_flush(lv_disp_drv_t *driver, const lv_area_t *area, lv_color_t 
     }
   }
   lv_disp_flush_ready(driver);
+}
+
+/**
+ * Report the simulated touch state to LVGL; coordinates are display pixels.
+ *
+ * Inputs: LVGL driver and output record. Returns nothing; copies the last point set by
+ * dashboard_render_touch and its pressed/released state.
+ */
+static void dashboard_touch_read(lv_indev_drv_t *driver, lv_indev_data_t *data) {
+  (void)driver;
+  data->point = dashboard_touch_point;
+  data->state = dashboard_touch_pressed ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
+}
+
+/**
+ * Press or release the simulated touch panel at a display pixel. LVGL reads it during the
+ * next dashboard_render_step at least LV_INDEV_DEF_READ_PERIOD ms later, then runs the same
+ * click and long-press handling as on the board.
+ */
+void dashboard_render_touch(int32_t x, int32_t y, bool pressed) {
+  dashboard_touch_point.x = (lv_coord_t)x;
+  dashboard_touch_point.y = (lv_coord_t)y;
+  dashboard_touch_pressed = pressed;
 }
 
 /**
@@ -76,7 +105,13 @@ bool dashboard_render_init(void) {
   if (dashboard_display == NULL) {
     return false;
   }
+  lv_indev_drv_init(&dashboard_touch_driver);
+  dashboard_touch_driver.type = LV_INDEV_TYPE_POINTER;
+  dashboard_touch_driver.read_cb = dashboard_touch_read;
+  dashboard_touch_pressed = false;
+  dashboard_touch = lv_indev_drv_register(&dashboard_touch_driver);
   ui_init();
+  app_diagnostics_ui_init();
   lv_refr_now(dashboard_display);
   return true;
 }
@@ -149,10 +184,15 @@ void dashboard_render_shutdown(void) {
   if (dashboard_display == NULL) {
     return;
   }
+  app_diagnostics_ui_destroy();
   ui_destroy();
   if (ui____initial_actions0 != NULL) {
     lv_obj_del(ui____initial_actions0);
     ui____initial_actions0 = NULL;
+  }
+  if (dashboard_touch != NULL) {
+    lv_indev_delete(dashboard_touch);
+    dashboard_touch = NULL;
   }
   lv_disp_remove(dashboard_display);
   dashboard_display = NULL;
