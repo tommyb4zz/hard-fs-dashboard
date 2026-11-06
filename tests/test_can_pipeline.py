@@ -170,7 +170,14 @@ class VirtualFirmwarePipelineTests(unittest.TestCase):
         snapshots = self.decode_frames(received_frames)
         self.assertEqual([snapshot["updated"] for snapshot in snapshots], [True, True, False, True])
         self.assertEqual(snapshots[-1]["average_pack_current_deci_amps"], 500)
-        self.assertEqual(snapshots[-1]["average_pack_power_kw"], 20)
+        # The only voltage reply was at t=0. At t=3 it is stale, so that current
+        # updates current statistics but must not create a power sample from old voltage.
+        self.assertEqual(snapshots[-1]["average_pack_power_kw"], -40)
+        refreshed = self.decode_frames(received_frames + [
+            (3100, encode_response("pack_voltage_v", 400)),
+            (3200, encode_response("pack_current_a", 200)),
+        ])
+        self.assertEqual(refreshed[-1]["average_pack_power_kw"], 20)
 
 
 if __name__ == "__main__":

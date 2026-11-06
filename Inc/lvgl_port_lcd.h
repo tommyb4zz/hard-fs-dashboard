@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-=======
 /**
  * File purpose: Declare board display initialization for the GUI after lv_init and before generated
  * screen creation. The implementation owns two SDRAM buffers and LTDC registration;
@@ -7,7 +5,6 @@
  * memory-backed display implementation and does not call this hardware port.
  */
 
->>>>>>> yousef-dashboard
 /*
  * lvgl_port_lcd.h
  *
@@ -34,8 +31,6 @@
  * GLOBAL PROTOTYPES
  **********************/
 
-<<<<<<< HEAD
-=======
 /**
  * Initialize SDRAM, LCD panel and LTDC, clear two full-screen framebuffers and register a
  * full-refresh LVGL display before enabling backlight; duplicate initialization or failed
@@ -47,7 +42,6 @@
  * pointer; a second call is fatal. Backlight is enabled only after nonnull registration.
  * The host simulator uses a different memory display and does not run this routine.
  */
->>>>>>> yousef-dashboard
 void LCD_init();
 
 /**********************

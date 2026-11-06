@@ -1,8 +1,8 @@
 /* Purpose: Declare the RAM-backed MMC interface exercised by production logger tests. */
 #ifndef STORAGE_TEST_MMC_H
-#define STORAGE_TEST_MMC_H
-#include <stdint.h>
-#define BSP_ERROR_NONE 0
+#  define STORAGE_TEST_MMC_H
+#  include <stdint.h>
+#  define BSP_ERROR_NONE 0
 typedef struct {
   uint32_t LogBlockNbr;
 } BSP_MMC_CardInfo;
@@ -31,3 +31,7 @@ int32_t BSP_MMC_ReadBlocks(uint32_t, uint32_t *, uint32_t, uint32_t);
  */
 int32_t BSP_MMC_WriteBlocks(uint32_t, uint32_t *, uint32_t, uint32_t);
 #endif
+
+#define MMC_TRANSFER_OK 0U
+#define MMC_TRANSFER_BUSY 1U
+int32_t BSP_MMC_GetCardState(uint32_t instance);

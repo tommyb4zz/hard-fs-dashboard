@@ -50,8 +50,4 @@ const app_can_config_t *app_can_config_get(void);
 }
 #endif
 
-<<<<<<< HEAD
 #endif /* APP_CAN_CONFIG_H */
-=======
-#endif /* APP_CAN_CONFIG_H */
->>>>>>> yousef-dashboard

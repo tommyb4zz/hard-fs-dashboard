@@ -1,5 +1,33 @@
 # hard-fs-dashboard
 
+## Live screens and malfunction history
+
+The dashboard uses received CAN measurements with per-signal validity/freshness; missing or
+stale values show `--`. The main screen and the red cell table are the SquareLine layouts as
+exported (the table is the original DebugFrame image with its own row captions). A pack screen
+and an append-only malfunction history are added at runtime from `Src/app_diagnostics_ui.c` in
+the same style, so re-exporting from SquareLine does not remove them. Malfunctions are recorded
+as episodes, one entry when a problem starts and one CLEAR when it ends, in a checksummed eMMC
+journal of about a million entries. See [runtime behavior, navigation, persistence and
+verification](docs/DASHBOARD_RUNTIME.md).
+
+Try the real firmware code interactively in a browser (taps and long presses go to its touch
+handling):
+
+```sh
+.venv/bin/python -m tools.dashboard_sim --live --scenario tools/can_sim/scenarios/dashboard.json --open
+```
+
+Or record a run and replay it with a screen selector and a `fault-history.csv` download:
+
+```sh
+.venv/bin/python -m tools.dashboard_sim --scenario tools/can_sim/scenarios/dashboard.json --output build/dashboard-complete --capture-every-ms 500 --open
+```
+
+On the board, console command `j` streams the whole malfunction history as CSV over the
+debug UART. Firmware auxiliary inputs (speed, drive mode, IMD/BSPD/... status) have no
+provider yet: they show unknown and are not written to the history until one is wired.
+
 ## Function documentation and virtual CAN testing
 
 - [Complete code guide](docs/CODE_GUIDE.md): expanded function contracts, module explanations, startup/build, synthetic tests, UI and BDP connections.
@@ -25,8 +53,7 @@ python3 -m venv .venv
 
 The dashboard command builds a host executable and writes actual LVGL captures, an animated viewer,
 decoded snapshots and validated log exports to `build/dashboard-sim/`. Edit the JSON and rerun to
-change inputs over time. `--open` opens the viewer in your default browser. The original automatic
-firmware demo remains available.
+change inputs over time. `--open` opens the viewer in your default browser. The synthetic auxiliary helper is retained for explicit tests; it is not called by production firmware.
 
 The Python integration tests require CMake and a host Clang/GCC compiler with sanitizer support.
 See [production CAN host tests](tests/can_host/README.md) for the independent C suite.
@@ -143,6 +170,12 @@ pre-commit run clang-format --all-files -v
 ## Build
 
 The project uses CMake presets and STM32Cube for VS Code.
+
+Prerequisite: an `arm-none-eabi` GCC toolchain. The STM32 VS Code extension can provide it,
+and CMake also looks in `build/_deps` and `/Applications/ArmGNUToolchain`. The build defaults to
+the kernel bundled under `Middleware/FreeRTOS-Kernel`. Pass `-DFREERTOS_PACK_DIR=<dir>` to use
+another kernel. If the bundled kernel is absent, CMake checks for the STM32 VS Code extension's
+FreeRTOS pack and the checkout created by `tools/fetch_firmware_deps.sh`.
 
 Typical local flow:
 - configure with the `Debug` preset

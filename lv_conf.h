@@ -1,6 +1,4 @@
 /**
-<<<<<<< HEAD
-=======
  * Project configuration role: Select LVGL's color, memory, tick, drawing, object/widget,
  * font and optional-feature implementations at compile time. Firmware and desktop UI
  * builds include this same file so widget output follows the same enabled LVGL features.
@@ -16,7 +14,6 @@
  */
 
 /**
->>>>>>> yousef-dashboard
  * @file lv_conf.h
  * Configuration file for v8.1.1-dev
  */

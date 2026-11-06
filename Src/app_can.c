@@ -133,6 +133,30 @@ static int16_t app_can_power_max_kw = 0;
 static int64_t app_can_power_sum_kw = 0;
 static uint32_t app_can_power_sample_count = 0U;
 
+/** Check per-signal received validity and unsigned millisecond age. */
+bool app_can_signal_is_fresh(const app_can_dashboard_data_t *data,
+                             app_can_signal_id_t signal,
+                             uint32_t now_ms) {
+  return data != NULL && (unsigned)signal < APP_CAN_SIGNAL_COUNT &&
+         (data->valid_mask & (1U << signal)) != 0U &&
+         (uint32_t)(now_ms - data->signal_tick_ms[signal]) <= APP_CAN_STALE_MS;
+}
+
+/** Provide names for diagnostics without assigning new vehicle protocol fields. */
+const char *app_can_signal_name(app_can_signal_id_t signal) {
+  static const char *const names[] = {"Pack voltage",
+                                      "Summed voltage",
+                                      "Pack current",
+                                      "State of charge",
+                                      "High temperature",
+                                      "Low temperature",
+                                      "Avg temperature",
+                                      "Low cell voltage",
+                                      "High cell voltage",
+                                      "Avg cell voltage"};
+  return (unsigned)signal < APP_CAN_SIGNAL_COUNT ? names[signal] : "Unknown";
+}
+
 static int16_t app_can_decode_orion_current_deci_amps(uint16_t raw_value);
 static void app_can_update_current_stats(app_can_dashboard_data_t *data);
 static void app_can_update_power_stats(app_can_dashboard_data_t *data);
@@ -577,11 +601,11 @@ static void app_can_update_current_stats(app_can_dashboard_data_t *data) {
 }
 
 /**
- * Accumulate integer-kW min/max/mean at current-sample time when pack voltage is nonzero.
+ * Accumulate integer-kW min/max/mean at current-sample time when voltage is fresh.
  *
- * Use retained nonzero pack voltage, or summed voltage, with the newly decoded current.
+ * Use fresh pack voltage, or fresh summed voltage, with the newly decoded current.
  * Round each power sample to integer kW before maintaining persistent min/max/sum/count
- * and writing the rounded mean. Null data or zero selected voltage leave statistics
+ * and writing the rounded mean. Null data or absent/stale voltage leave statistics
  * unchanged. Sampling has no freshness pairing or time integration.
  */
 static void app_can_update_power_stats(app_can_dashboard_data_t *data) {
@@ -594,10 +618,16 @@ static void app_can_update_power_stats(app_can_dashboard_data_t *data) {
   }
 
   voltage_deci_volts = app_can_get_display_voltage_deci_volts(data);
-  if (voltage_deci_volts == 0U) {
+  if (app_can_signal_is_fresh(data, APP_CAN_SIGNAL_PACK_VOLTAGE, HAL_GetTick())) {
+    voltage_deci_volts = data->pack_voltage_deci_volts;
+  } else if (app_can_signal_is_fresh(data, APP_CAN_SIGNAL_PACK_SUMMED_VOLTAGE, HAL_GetTick())) {
+    voltage_deci_volts = data->pack_summed_voltage_deci_volts;
+  } else {
+    data->power_valid = false;
     return;
   }
 
+  data->power_valid = true;
   power_kw = app_can_compute_power_kw(data->pack_current_deci_amps, voltage_deci_volts);
 
   if (!app_can_power_stats_valid) {
@@ -800,6 +830,15 @@ static bool app_can_decode_orion_response(const FDCAN_RxHeaderTypeDef *rx_header
     return false;
   }
 
+  unsigned signal;
+  for (signal = 0; signal < APP_CAN_REQUEST_COUNT; ++signal)
+    if (app_can_request_table[signal].pid == pid)
+      break;
+  if (signal == APP_CAN_REQUEST_COUNT)
+    return false;
+  data->valid_mask |= (uint16_t)(1U << signal);
+  data->signal_tick_ms[signal] = HAL_GetTick();
+
   switch (pid) {
   case APP_CAN_PID_PACK_VOLTAGE:
     raw_value = ((uint16_t)rx_data[4] << 8U) | (uint16_t)rx_data[5];
@@ -978,17 +1017,16 @@ bool app_can_init(void) {
 
 /**
  * Expire overdue requests, drain valid replies, and send the next PID every 50 ms when
- * idle. Copy the latest snapshot only after a valid reply; unsigned elapsed-time
+ * idle. Always copy the retained snapshot on initialized polls; unsigned elapsed-time
  * arithmetic supports tick rollover.
  *
- * data is caller storage for a full snapshot and is written only if at least one reply is
- * accepted. Capture HAL milliseconds once; expire pending requests only when unsigned
- * elapsed time is strictly greater than 100 ms, then drain FIFO0 until empty or HAL read
- * failure. Valid unsolicited/duplicate replies still update measurements, while only a
- * matching PID clears pending and advances. When idle and elapsed time is at least 50 ms,
- * enqueue the next request and record its time on success. Return false for
- * null/uninitialized input or no accepted reply; no battery-staleness transition is
- * produced.
+ * data is caller storage for a full snapshot. Return true only after an accepted reply. Capture HAL
+ * milliseconds once; expire pending requests only when unsigned elapsed time is strictly greater
+ * than 100 ms, then drain FIFO0 until empty or HAL read failure. Valid unsolicited/duplicate
+ * replies still update measurements, while only a matching PID clears pending and advances. When
+ * idle and elapsed time is at least 50 ms, enqueue the next request and record its time on success.
+ * Return false for null/uninitialized input or no accepted reply; consumers evaluate per-signal
+ * age.
  */
 bool app_can_poll_dashboard_data(app_can_dashboard_data_t *data) {
   FDCAN_RxHeaderTypeDef rx_header = {0};
@@ -1003,6 +1041,7 @@ bool app_can_poll_dashboard_data(app_can_dashboard_data_t *data) {
 
   if ((app_can_pending_pid != 0U) &&
       ((now - app_can_last_request_ms) > APP_CAN_REQUEST_TIMEOUT_MS)) {
+    app_can_latest_data.request_timeouts++;
     app_can_debug_log_timeout(app_can_pending_pid);
     app_can_pending_pid = 0U;
     app_can_advance_request_sequence();
@@ -1020,6 +1059,8 @@ bool app_can_poll_dashboard_data(app_can_dashboard_data_t *data) {
         app_can_pending_pid = 0U;
         app_can_advance_request_sequence();
       }
+    } else {
+      app_can_latest_data.rejected_frames++;
     }
   }
 
@@ -1033,12 +1074,8 @@ bool app_can_poll_dashboard_data(app_can_dashboard_data_t *data) {
     }
   }
 
-  if (updated) {
-    *data = app_can_latest_data;
-    return true;
-  }
-
-  return false;
+  *data = app_can_latest_data;
+  return updated;
 }
 
 /**

@@ -1,6 +1,4 @@
 /**
-<<<<<<< HEAD
-=======
  * Configure features used by the reused MB1381 discovery BSP: COM logging, SDRAM LCD buffer
  * addresses, touch gesture/multitouch options and peripheral IRQ priorities. LCD layer
  * addresses are 0xD0000000 and 0xD0200000. Audio settings are retained BSP options, not
@@ -14,7 +12,6 @@
  */
 
 /**
->>>>>>> yousef-dashboard
   ******************************************************************************
   * @file    stm32h745i_discovery_config.h
   * @author  MCD Application Team
@@ -45,12 +42,8 @@
 #include "stm32h7xx_hal.h"
 
 /* COM define */
-<<<<<<< HEAD
-#define USE_COM_LOG                         0U
-=======
 #define USE_BSP_COM_FEATURE                 1U
 #define USE_COM_LOG                         1U
->>>>>>> yousef-dashboard
 
 
 

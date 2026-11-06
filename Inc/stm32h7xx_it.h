@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-=======
 /**
  * Declare the Cortex-M exception and board-peripheral vector entry symbols. Definitions in
  * Src/stm32h7xx_it.c route kernel/MMC/button/SDRAM interrupts or halt faults. A declaration by
@@ -12,7 +10,6 @@
  * peripheral declarations use the startup default handler in this build.
  */
 
->>>>>>> yousef-dashboard
 /* USER CODE BEGIN Header */
 /**
   ******************************************************************************
@@ -61,20 +58,6 @@
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/
-<<<<<<< HEAD
-void NMI_Handler(void);
-void HardFault_Handler(void);
-void MemManage_Handler(void);
-void BusFault_Handler(void);
-void UsageFault_Handler(void);
-void SVC_Handler(void);
-void DebugMon_Handler(void);
-void PendSV_Handler(void);
-void SysTick_Handler(void);
-void EXTI2_IRQHandler(void);
-void EXTI15_10_IRQHandler(void);
-void QUADSPI_IRQHandler(void);
-=======
 /**
  * Handle the nonmaskable exception by entering an infinite loop. No arguments, diagnostic
  * capture or recovery are provided; the handler never returns to the interrupted context.
@@ -157,7 +140,6 @@ void QUADSPI_IRQHandler(void);
  * determines transfer handling; this wrapper neither configures an MDMA transfer nor supplies a
  * status result. Empty user sections have no runtime effect.
  */
->>>>>>> yousef-dashboard
 void MDMA_IRQHandler(void);
 /* USER CODE BEGIN EFP */
 

@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-=======
 /**
  * File purpose: Define the generated ui_font_Mons110 LVGL font descriptor, glyph bitmap,
  * character mapping and kerning tables; this asset file has no project function bodies.
@@ -15,7 +13,6 @@
  */
 
 
->>>>>>> yousef-dashboard
 /*******************************************************************************
  * Size: 110 px
  * Bpp: 8

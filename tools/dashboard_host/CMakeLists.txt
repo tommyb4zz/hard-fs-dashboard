@@ -25,7 +25,10 @@ add_executable(dashboard_host
     "${DASHBOARD_ROOT}/Src/app_can_config.c"
     "${DASHBOARD_ROOT}/Src/app_data_log.c"
     "${DASHBOARD_ROOT}/Src/app_emmc_log.c"
-    "${DASHBOARD_ROOT}/Src/app_dashboard_ui.c")
+    "${DASHBOARD_ROOT}/Src/app_dashboard_ui.c"
+    "${DASHBOARD_ROOT}/Src/app_diagnostics_ui.c"
+    "${DASHBOARD_ROOT}/Src/app_fault_history.c"
+    "${DASHBOARD_ROOT}/Src/app_fault_monitor.c")
 target_include_directories(dashboard_host PRIVATE
     include "${DASHBOARD_ROOT}/tests/can_host/include"
     "${DASHBOARD_ROOT}/Inc" "${DASHBOARD_ROOT}" "${DASHBOARD_ROOT}/ui")
@@ -46,7 +49,10 @@ endif()
 enable_testing()
 add_executable(dashboard_ui_tests
     "${DASHBOARD_ROOT}/tests/dashboard_ui/test_binding.c"
-    render.c "${DASHBOARD_ROOT}/Src/app_dashboard_ui.c")
+    render.c "${DASHBOARD_ROOT}/Src/app_dashboard_ui.c"
+    "${DASHBOARD_ROOT}/Src/app_diagnostics_ui.c"
+    "${DASHBOARD_ROOT}/Src/app_fault_history.c"
+    "${DASHBOARD_ROOT}/Src/app_fault_monitor.c")
 target_include_directories(dashboard_ui_tests PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}" "${DASHBOARD_ROOT}/Inc" "${DASHBOARD_ROOT}")
 target_compile_options(dashboard_ui_tests PRIVATE -Wall -Wextra -Werror -Wpedantic -UNDEBUG)

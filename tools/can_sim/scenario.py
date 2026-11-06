@@ -233,6 +233,18 @@ def _auxiliary_tracks(configuration: object) -> dict[str, Track]:
     return tracks
 
 
+def _auxiliary_wired(configuration: object) -> frozenset[str]:
+    """Name the auxiliary inputs a scenario explicitly provides.
+
+    Input is the already-validated auxiliary object. Return speed_kph/drive_mode when their
+    keys are present and every named status, including ones whose value is "unknown" or
+    null: a provided input is wired, so its missing data is a malfunction. Omitted inputs
+    are unwired, like production firmware, and are never written to the fault history."""
+    data = configuration if isinstance(configuration, dict) else {}
+    statuses = data.get("statuses", {}) if isinstance(data.get("statuses", {}), dict) else {}
+    return frozenset([name for name in ("speed_kph", "drive_mode") if name in data] + list(statuses))
+
+
 def _unknown_auxiliary_tracks() -> dict[str, Track]:
     """Allocate the default auxiliary tracks for direct Scenario construction.
 
@@ -305,6 +317,7 @@ class Scenario:
     tracks: dict[str, Track]
     faults: tuple[Fault, ...]
     auxiliary_tracks: dict[str, Track] = field(default_factory=_unknown_auxiliary_tracks)
+    auxiliary_wired: frozenset[str] = frozenset()
 
     @classmethod
     def from_dict(cls, configuration: object) -> Scenario:
@@ -328,8 +341,9 @@ class Scenario:
         faults = data.get("faults", [])
         if not isinstance(faults, list):
             raise ValueError("faults must be an array")
+        auxiliary = data.get("auxiliary", {})
         return cls(duration, tracks, tuple(_fault(index, value) for index, value in enumerate(faults)),
-                   _auxiliary_tracks(data.get("auxiliary", {})))
+                   _auxiliary_tracks(auxiliary), _auxiliary_wired(auxiliary))
 
     @classmethod
     def from_text(cls, text: str) -> Scenario:

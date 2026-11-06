@@ -23,13 +23,10 @@ CONNECT_PORT=${CONNECT_PORT:-SWD}
 CONNECT_MODE=${CONNECT_MODE:-UR}
 LOADER_NAME=${LOADER_NAME:-MT25TL01G_STM32H750B-DISCO.stldr}
 
-<<<<<<< HEAD
-=======
 # Print the first executable STM32CubeProgrammer CLI found from the explicit override, PATH or
 # known installation locations; return 1 when no candidate is available. Takes no positional
 # arguments. Checks override executability before PATH and bundle candidates; it prints only
 # the chosen path on stdout and does not launch the programmer or inspect a connected board.
->>>>>>> yousef-dashboard
 find_programmer() {
     if [ -n "${STM32_PROGRAMMER_CLI:-}" ] && [ -x "${STM32_PROGRAMMER_CLI}" ]; then
         printf '%s\n' "${STM32_PROGRAMMER_CLI}"
@@ -55,13 +52,10 @@ find_programmer() {
     return 1
 }
 
-<<<<<<< HEAD
-=======
 # Print the first existing board external-loader file found from the explicit override or
 # installation paths beside the programmer supplied as argument 1; return 1 if none exists.
 # Uses LOADER_NAME/STM32_EXTERNAL_LOADER overrides and checks file presence, not compatibility
 # with a fitted QSPI device. stdout is consumed by the caller's command substitution.
->>>>>>> yousef-dashboard
 find_loader() {
     if [ -n "${STM32_EXTERNAL_LOADER:-}" ] && [ -f "${STM32_EXTERNAL_LOADER}" ]; then
         printf '%s\n' "${STM32_EXTERNAL_LOADER}"

@@ -286,3 +286,9 @@ int main(int argc, char **argv) {
   assert(fwrite(wire, 1U, wire_count, stdout) == wire_count);
   return 0;
 }
+
+/** Host fake card writes complete synchronously. */
+int32_t BSP_MMC_GetCardState(uint32_t instance) {
+  (void)instance;
+  return MMC_TRANSFER_OK;
+}

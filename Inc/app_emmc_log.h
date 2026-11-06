@@ -9,6 +9,7 @@
 #ifndef APP_EMMC_LOG_H
 #define APP_EMMC_LOG_H
 
+#include "app_fault_history.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -27,12 +28,21 @@ extern "C" {
 typedef struct {
   bool ready;
   bool overflow;
+  bool io_failed;
+  uint32_t io_errors;
   uint32_t session_id;
   uint32_t record_count;
   uint32_t written_blocks;
   uint32_t reserved_blocks;
   uint32_t staged_bytes;
 } app_emmc_log_status_t;
+
+/** Return slots in the separate 2 MiB fault reservation after telemetry's 128 MiB region. */
+uint32_t app_emmc_fault_capacity(void);
+/** Read/validate one fault slot: 1 valid, 0 fully erased, -1 I/O error/corruption. */
+int app_emmc_fault_read(uint32_t index, app_fault_event_t *event);
+/** Write one event once, verify readback; an identical retry is permitted. */
+bool app_emmc_fault_write(uint32_t index, const app_fault_event_t *event);
 
 /**
  * Create/take the logger mutex, initialize the eMMC BSP and size the reserved region to

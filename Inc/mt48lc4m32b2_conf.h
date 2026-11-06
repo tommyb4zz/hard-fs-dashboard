@@ -1,6 +1,4 @@
 /**
-<<<<<<< HEAD
-=======
  * Supply the SDRAM component's refresh count 0x0603 and command-operation timeout 0xFFFF. The
  * retained comment associates refresh with a 100 MHz SDRAM clock; timing/capacity are also
  * selected in the BSP/FMC configuration. These constants do not probe the memory or reconcile
@@ -13,7 +11,6 @@
  */
 
 /**
->>>>>>> yousef-dashboard
   ******************************************************************************
   * @file    mt48lc4m32b2_conf.h
   * @author  MCD Application Team

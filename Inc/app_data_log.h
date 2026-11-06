@@ -1,5 +1,5 @@
 /**
- * File purpose: Declare timestamped full-snapshot RAM samples, ring lifecycle/counters, oldest-
+ * File purpose: Declare timestamped measurement-only RAM samples, ring lifecycle/counters, oldest-
  * relative reads and CSV output. Each API operation is separately protected by its
  * implementation; multiple reads or a complete dump are not guaranteed to observe one
  * ring generation. Timestamp units are milliseconds and measurement units follow
@@ -21,7 +21,7 @@ extern "C" {
 /* A millisecond timestamp copied from the caller plus a by-value scaled battery snapshot. */
 typedef struct {
   uint32_t timestamp_ms;
-  app_can_dashboard_data_t dashboard_data;
+  app_can_measurements_t dashboard_data;
 } app_data_log_sample_t;
 
 /**
@@ -45,10 +45,10 @@ void app_data_log_reset(void);
  * oldest sample once full and setting the wrap flag; ignore null data.
  *
  * timestamp_ms is a caller-provided uint32_t millisecond value and is stored without
- * ordering checks. Copy the full snapshot by value, advance head modulo 4096 and cap count
- * at 4096. wrapped becomes true on the first overwrite after filling, not on the write
- * that initially reaches capacity. Recording does not apply measurement validation or
- * persistent storage.
+ * ordering checks. Copy the stable measurement prefix by value, advance head modulo 4096 and cap
+ * count at 4096. wrapped becomes true on the first overwrite after filling, not on the write that
+ * initially reaches capacity. Recording does not apply measurement validation or persistent
+ * storage.
  */
 void app_data_log_record(uint32_t timestamp_ms, const app_can_dashboard_data_t *data);
 /**

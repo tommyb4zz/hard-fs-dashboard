@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-=======
 /**
  * File purpose: Register a full-refresh 480-by-272 RGB565 LVGL display using two BSP-addressed
  * SDRAM framebuffers. Configure panel-control GPIO, LTDC pins/PLL/timing/layer and cache
@@ -8,7 +6,6 @@
  * and is not run by the host memory renderer.
  */
 
->>>>>>> yousef-dashboard
 #include "lvgl_port_lcd.h"
 
 #include "main.h"
@@ -18,17 +15,11 @@
 
 #include <string.h>
 
-<<<<<<< HEAD
-=======
 /* Persistent handles/buffers must outlive LVGL registration and subsequent flush calls. */
->>>>>>> yousef-dashboard
 static LTDC_HandleTypeDef hltdc;
 static lv_disp_draw_buf_t draw_buf;
 static lv_disp_drv_t disp_drv;
 static lv_disp_t *display;
-<<<<<<< HEAD
-
-=======
 static lv_color_t *const framebuffer_1 = (lv_color_t *)LCD_LAYER_0_ADDRESS;
 static lv_color_t *const framebuffer_2 = (lv_color_t *)LCD_LAYER_1_ADDRESS;
 
@@ -39,14 +30,10 @@ static lv_color_t *const framebuffer_2 = (lv_color_t *)LCD_LAYER_1_ADDRESS;
  * switch failures. Error_Handler has no recovery path in this application, so callers do
  * not receive an error status.
  */
->>>>>>> yousef-dashboard
 static void lcd_error(void) {
   Error_Handler();
 }
 
-<<<<<<< HEAD
-static void lcd_panel_power_on(void) {
-=======
 /**
  * Enable the LCD control GPIO clocks and configure output pins; hold backlight, display
  * enable and reset low and select the display mode.
@@ -56,16 +43,12 @@ static void lcd_panel_power_on(void) {
  * for their combined initialization. No GPIO HAL return status is checked.
  */
 static void lcd_panel_prepare(void) {
->>>>>>> yousef-dashboard
   GPIO_InitTypeDef gpio = {0};
 
   LCD_DISP_EN_GPIO_CLK_ENABLE();
   LCD_BL_CTRL_GPIO_CLK_ENABLE();
-<<<<<<< HEAD
-=======
   LCD_DISPLAY_MODE_GPIO_CLK_ENABLE();
   LCD_RESET_GPIO_CLK_ENABLE();
->>>>>>> yousef-dashboard
 
   gpio.Pin = LCD_DISP_EN_Pin | LCD_BL_CTRL_Pin;
   gpio.Mode = GPIO_MODE_OUTPUT_PP;
@@ -73,12 +56,6 @@ static void lcd_panel_prepare(void) {
   gpio.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LCD_DISP_EN_GPIO_Port, &gpio);
 
-<<<<<<< HEAD
-  HAL_GPIO_WritePin(LCD_DISP_EN_GPIO_Port, LCD_DISP_EN_Pin, GPIO_PIN_SET);
-  HAL_GPIO_WritePin(LCD_BL_CTRL_GPIO_Port, LCD_BL_CTRL_Pin, GPIO_PIN_SET);
-}
-
-=======
   gpio.Pin = LCD_DISPLAY_MODE_Pin;
   HAL_GPIO_Init(LCD_DISPLAY_MODE_GPIO_Port, &gpio);
 
@@ -127,7 +104,6 @@ static void lcd_backlight_on(void) {
  * have no checked result. Reset/release LTDC after pin configuration; no fitted-panel
  * identity is read.
  */
->>>>>>> yousef-dashboard
 static void lcd_ltdc_msp_init(void) {
   GPIO_InitTypeDef gpio = {0};
   RCC_PeriphCLKInitTypeDef periph_clk = {0};
@@ -151,11 +127,6 @@ static void lcd_ltdc_msp_init(void) {
   __HAL_RCC_GPIOI_CLK_ENABLE();
   __HAL_RCC_GPIOJ_CLK_ENABLE();
   __HAL_RCC_GPIOH_CLK_ENABLE();
-<<<<<<< HEAD
-  LCD_DISPLAY_MODE_GPIO_CLK_ENABLE();
-  LCD_RESET_GPIO_CLK_ENABLE();
-=======
->>>>>>> yousef-dashboard
 
   gpio.Pin = GPIO_PIN_5 | GPIO_PIN_4 | GPIO_PIN_6 | GPIO_PIN_3 | GPIO_PIN_7 | GPIO_PIN_2;
   gpio.Mode = GPIO_MODE_AF_PP;
@@ -177,21 +148,6 @@ static void lcd_ltdc_msp_init(void) {
 
   __HAL_RCC_LTDC_FORCE_RESET();
   __HAL_RCC_LTDC_RELEASE_RESET();
-<<<<<<< HEAD
-
-  gpio.Pin = LCD_DISPLAY_MODE_Pin;
-  gpio.Mode = GPIO_MODE_OUTPUT_PP;
-  gpio.Pull = GPIO_NOPULL;
-  gpio.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(LCD_DISPLAY_MODE_GPIO_Port, &gpio);
-  HAL_GPIO_WritePin(LCD_DISPLAY_MODE_GPIO_Port, LCD_DISPLAY_MODE_Pin, GPIO_PIN_SET);
-
-  gpio.Pin = LCD_RESET_Pin;
-  HAL_GPIO_Init(LCD_RESET_GPIO_Port, &gpio);
-  HAL_GPIO_WritePin(LCD_RESET_GPIO_Port, LCD_RESET_Pin, GPIO_PIN_SET);
-}
-
-=======
 }
 
 /**
@@ -204,7 +160,6 @@ static void lcd_ltdc_msp_init(void) {
  * calculates 491 clocks while the image layer is 480 pixels. This requires exact-panel
  * evidence before alteration and is not exercised by host rendering.
  */
->>>>>>> yousef-dashboard
 static void lcd_ltdc_init(void) {
   LTDC_LayerCfgTypeDef layer = {0};
 
@@ -252,16 +207,6 @@ static void lcd_ltdc_init(void) {
   }
 }
 
-<<<<<<< HEAD
-static void disp_flush(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_p) {
-  LV_UNUSED(area);
-  LV_UNUSED(color_p);
-
-  SCB_CleanInvalidateDCache();
-  lv_disp_flush_ready(drv);
-}
-
-=======
 /**
  * LVGL flush callback: ignore area, clean/invalidate the data cache, point LTDC layer zero
  * at color_p and signal completion through drv; enter the error handler if changing the
@@ -296,7 +241,6 @@ static void disp_flush(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *co
  * pointer; a second call is fatal. Backlight is enabled only after nonnull registration.
  * The host simulator uses a different memory display and does not run this routine.
  */
->>>>>>> yousef-dashboard
 void LCD_init(void) {
   if (display != NULL) {
     lcd_error();
@@ -306,18 +250,6 @@ void LCD_init(void) {
     lcd_error();
   }
 
-<<<<<<< HEAD
-  lcd_ltdc_msp_init();
-  lcd_ltdc_init();
-  lcd_panel_power_on();
-
-  memset(
-      (void *)LCD_LAYER_0_ADDRESS, 0, LCD_DEFAULT_WIDTH * LCD_DEFAULT_HEIGHT * sizeof(lv_color_t));
-  SCB_CleanInvalidateDCache();
-
-  lv_disp_draw_buf_init(
-      &draw_buf, (void *)LCD_LAYER_0_ADDRESS, NULL, LCD_DEFAULT_WIDTH * LCD_DEFAULT_HEIGHT);
-=======
   lcd_panel_prepare();
   lcd_ltdc_msp_init();
   lcd_panel_power_on();
@@ -329,26 +261,18 @@ void LCD_init(void) {
 
   lv_disp_draw_buf_init(
       &draw_buf, framebuffer_1, framebuffer_2, LCD_DEFAULT_WIDTH * LCD_DEFAULT_HEIGHT);
->>>>>>> yousef-dashboard
 
   lv_disp_drv_init(&disp_drv);
   disp_drv.hor_res = LCD_DEFAULT_WIDTH;
   disp_drv.ver_res = LCD_DEFAULT_HEIGHT;
   disp_drv.flush_cb = disp_flush;
   disp_drv.draw_buf = &draw_buf;
-<<<<<<< HEAD
-  disp_drv.direct_mode = 1;
-=======
   disp_drv.full_refresh = 1;
->>>>>>> yousef-dashboard
   display = lv_disp_drv_register(&disp_drv);
 
   if (display == NULL) {
     lcd_error();
   }
-<<<<<<< HEAD
-=======
 
   lcd_backlight_on();
->>>>>>> yousef-dashboard
 }

@@ -1,6 +1,4 @@
 /**
-<<<<<<< HEAD
-=======
  * Configure the FT5336 component driver: automatic calibration is disabled and logical X/Y
  * limits are 480/272. These macros are read by the touch component, while the application port
  * supplies orientation and LVGL pointer registration. The header declares no callable code and
@@ -13,7 +11,6 @@
  */
 
 /**
->>>>>>> yousef-dashboard
   ******************************************************************************
   * @file    ft5336_conf.h
   * @author  MCD Application Team

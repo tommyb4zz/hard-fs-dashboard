@@ -1,17 +1,3 @@
-<<<<<<< HEAD
-#include "main.h"
-
-#include "stm32h745i_discovery_qspi.h"
-#include "lvgl/lvgl.h"
-#include "lvgl_port_lcd.h"
-#include "lvgl_port_touchpad.h"
-#include "ui/ui.h"
-
-void SystemClock_Config(void);
-static void MPU_Config(void);
-void Error_Handler(void);
-
-=======
 /**
  * File purpose: Start the STM32 dashboard: configure MPU/caches/clocks and debug UART, map
  * QSPI assets, create application tasks and start FreeRTOS. Provide fatal-error and stack-
@@ -52,7 +38,6 @@ static void DebugConsole_Init(void);
  * This path is not executed by the desktop synthetic runner; mapped flash must be programmed
  * separately on hardware.
  */
->>>>>>> yousef-dashboard
 int main(void) {
   BSP_QSPI_Init_t qspi_init;
 
@@ -61,12 +46,6 @@ int main(void) {
   SCB_EnableDCache();
 
   HAL_Init();
-<<<<<<< HEAD
-  SystemClock_Config();
-
-  BSP_LED_Init(LED1);
-  BSP_LED_Init(LED2);
-=======
 
   SystemClock_Config();
   DebugConsole_Init();
@@ -76,7 +55,6 @@ int main(void) {
          app_can_is_debug_enabled() ? 1U : 0U);
 
   HAL_Delay(50);
->>>>>>> yousef-dashboard
 
   qspi_init.InterfaceMode = MT25TL01G_QPI_MODE;
   qspi_init.TransferRate = MT25TL01G_DTR_TRANSFER;
@@ -90,23 +68,6 @@ int main(void) {
     Error_Handler();
   }
 
-<<<<<<< HEAD
-  lv_init();
-  LVGL_TickSetEnabled(1U);
-  LCD_init();
-  touchpad_init();
-  ui_init();
-
-  while (1) {
-    HAL_Delay(5);
-    lv_timer_handler();
-  }
-}
-
-void SystemClock_Config(void) {
-  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
-  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
-=======
   __DSB();
   __ISB();
   SCB_InvalidateICache();
@@ -140,17 +101,13 @@ void SystemClock_Config(void) {
   if (HAL_PWREx_ConfigSupply(PWR_LDO_SUPPLY) != HAL_OK) {
     Error_Handler();
   }
->>>>>>> yousef-dashboard
 
   __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
 
   while (!__HAL_PWR_GET_FLAG(PWR_FLAG_VOSRDY)) {
-<<<<<<< HEAD
-=======
     if ((HAL_GetTick() - timeout_start) > 100U) {
       Error_Handler();
     }
->>>>>>> yousef-dashboard
   }
 
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
@@ -186,13 +143,6 @@ void SystemClock_Config(void) {
   }
 }
 
-<<<<<<< HEAD
-void Error_Handler(void) {
-  while (1) {
-  }
-}
-
-=======
 /**
  * Terminate normal application progress after a fatal initialization/runtime error. No input,
  * status code or recovery is provided.
@@ -263,64 +213,11 @@ static void DebugConsole_Init(void) {
  * exposes 8 MiB of SDRAM, so the 32 MiB MPU region is a documented bounds-reconciliation gap;
  * this function does not test memory or initialize its controllers.
  */
->>>>>>> yousef-dashboard
 static void MPU_Config(void) {
   MPU_Region_InitTypeDef MPU_InitStruct = {0};
 
   HAL_MPU_Disable();
 
-<<<<<<< HEAD
-  MPU_InitStruct.Enable = MPU_REGION_ENABLE;
-  MPU_InitStruct.Number = MPU_REGION_NUMBER0;
-  MPU_InitStruct.BaseAddress = 0x24000000;
-  MPU_InitStruct.Size = MPU_REGION_SIZE_512KB;
-  MPU_InitStruct.SubRegionDisable = 0x00;
-  MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;
-  MPU_InitStruct.AccessPermission = MPU_REGION_FULL_ACCESS;
-  MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_ENABLE;
-  MPU_InitStruct.IsShareable = MPU_ACCESS_NOT_SHAREABLE;
-  MPU_InitStruct.IsCacheable = MPU_ACCESS_CACHEABLE;
-  MPU_InitStruct.IsBufferable = MPU_ACCESS_NOT_BUFFERABLE;
-  HAL_MPU_ConfigRegion(&MPU_InitStruct);
-
-  MPU_InitStruct.Enable = MPU_REGION_ENABLE;
-  MPU_InitStruct.Number = MPU_REGION_NUMBER1;
-  MPU_InitStruct.BaseAddress = 0x30000000;
-  MPU_InitStruct.Size = MPU_REGION_SIZE_256KB;
-  MPU_InitStruct.SubRegionDisable = 0x00;
-  MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;
-  MPU_InitStruct.AccessPermission = MPU_REGION_FULL_ACCESS;
-  MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_ENABLE;
-  MPU_InitStruct.IsShareable = MPU_ACCESS_NOT_SHAREABLE;
-  MPU_InitStruct.IsCacheable = MPU_ACCESS_CACHEABLE;
-  MPU_InitStruct.IsBufferable = MPU_ACCESS_NOT_BUFFERABLE;
-  HAL_MPU_ConfigRegion(&MPU_InitStruct);
-
-  MPU_InitStruct.Enable = MPU_REGION_ENABLE;
-  MPU_InitStruct.Number = MPU_REGION_NUMBER2;
-  MPU_InitStruct.BaseAddress = 0xD0000000;
-  MPU_InitStruct.Size = MPU_REGION_SIZE_32MB;
-  MPU_InitStruct.SubRegionDisable = 0x00;
-  MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;
-  MPU_InitStruct.AccessPermission = MPU_REGION_FULL_ACCESS;
-  MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_ENABLE;
-  MPU_InitStruct.IsShareable = MPU_ACCESS_NOT_SHAREABLE;
-  MPU_InitStruct.IsCacheable = MPU_ACCESS_CACHEABLE;
-  MPU_InitStruct.IsBufferable = MPU_ACCESS_NOT_BUFFERABLE;
-  HAL_MPU_ConfigRegion(&MPU_InitStruct);
-
-  MPU_InitStruct.Enable = MPU_REGION_ENABLE;
-  MPU_InitStruct.Number = MPU_REGION_NUMBER3;
-  MPU_InitStruct.BaseAddress = 0x90000000;
-  MPU_InitStruct.Size = MPU_REGION_SIZE_128MB;
-  MPU_InitStruct.SubRegionDisable = 0x00;
-  MPU_InitStruct.TypeExtField = MPU_TEX_LEVEL0;
-  MPU_InitStruct.AccessPermission = MPU_REGION_FULL_ACCESS;
-  MPU_InitStruct.DisableExec = MPU_INSTRUCTION_ACCESS_ENABLE;
-  MPU_InitStruct.IsShareable = MPU_ACCESS_NOT_SHAREABLE;
-  MPU_InitStruct.IsCacheable = MPU_ACCESS_CACHEABLE;
-  MPU_InitStruct.IsBufferable = MPU_ACCESS_NOT_BUFFERABLE;
-=======
   /* All four regions use these access and cache attributes. The vendor HAL reads this
    * configuration without modifying it, so only region number, base and size change below. */
   MPU_InitStruct.Enable = MPU_REGION_ENABLE;
@@ -354,7 +251,6 @@ static void MPU_Config(void) {
   MPU_InitStruct.Number = MPU_REGION_NUMBER3;
   MPU_InitStruct.BaseAddress = 0x90000000;
   MPU_InitStruct.Size = MPU_REGION_SIZE_128MB;
->>>>>>> yousef-dashboard
   HAL_MPU_ConfigRegion(&MPU_InitStruct);
 
   HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);

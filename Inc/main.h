@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-=======
 /**
  * Share HAL/BSP types, board GPIO aliases and fatal-error declarations for firmware sources.
  * Pin macros describe the selected board profile; they do not configure GPIO hardware when this
@@ -12,7 +10,6 @@
  * fatal-error declarations; retain the Cube timer-post-init declaration.
  */
 
->>>>>>> yousef-dashboard
 /* USER CODE BEGIN Header */
 /**
   ******************************************************************************
@@ -66,15 +63,6 @@ extern "C" {
 
 /* USER CODE END EM */
 
-<<<<<<< HEAD
-void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
-
-/* Exported functions prototypes ---------------------------------------------*/
-void Error_Handler(void);
-
-/* USER CODE BEGIN EFP */
-void LVGL_TickSetEnabled(uint8_t enabled);
-=======
 /**
  * Retained Cube timer post-initialization declaration; the project example definition is
  * commented out, so this declaration has no active implementation in
@@ -94,7 +82,6 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
->>>>>>> yousef-dashboard
 
 /* USER CODE END EFP */
 

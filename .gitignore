@@ -3,9 +3,6 @@ build
 
 .DS_Store
 .pre-commit-cache/
-<<<<<<< HEAD
-=======
 .venv/
 __pycache__/
 *.py[cod]
->>>>>>> yousef-dashboard
