@@ -1,6 +1,4 @@
 #!/bin/sh
-<<<<<<< HEAD
-=======
 # Purpose: Locate STM32CubeProgrammer and the board QSPI loader, verify both firmware images
 # exist, flash/verify external QSPI first, then flash/verify internal flash and reset the
 # target.
@@ -9,7 +7,6 @@
 # The final programmer invocations change physical flash. This script is not part of
 # synthetic simulation and is not run by the documentation or host test commands.
 
->>>>>>> yousef-dashboard
 
 set -eu
 
