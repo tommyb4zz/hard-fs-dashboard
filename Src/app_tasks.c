@@ -14,6 +14,7 @@
 
 #include "app_can.h"
 #include "app_dashboard_ui.h"
+#include "app_demo.h"
 #include "app_data_log.h"
 #include "app_diagnostics_ui.h"
 #include "app_emmc_log.h"
@@ -34,6 +35,8 @@
 static QueueHandle_t app_ui_queue = NULL;
 /* Console request for a history dump; the GUI task owns the history and streams it. */
 static volatile bool app_fault_dump_requested = false;
+/* Latched once before the scheduler starts; a mode change requires a new boot. */
+static bool app_demo_active;
 #define APP_FAULT_DUMP_EVENTS_PER_PASS 4U
 
 /* Stack sizes are FreeRTOS words; periods are milliseconds converted with pdMS_TO_TICKS.
@@ -62,7 +65,7 @@ static volatile bool app_fault_dump_requested = false;
 static void app_console_print_help(void) {
   printf("[console] commands: h=help i=ram-log-info d=ram-dump c=ram-clear "
          "e=emmc-info p=emmc-dump-csv b=script-bin-dump x=emmc-reset "
-         "f=emmc-flush j=fault-history-csv v=toggle-can-debug\r\n");
+         "f=emmc-flush j=fault-history-csv v=toggle-can-debug s=input-source\r\n");
 }
 
 /**
@@ -116,6 +119,11 @@ static void app_console_handle_command(uint8_t command) {
   bool can_debug_was_enabled = false;
 
   switch (command) {
+  case 's':
+  case 'S':
+    printf("[source] %s\r\n",
+           app_demo_active ? "DEMO synthetic; CAN=off storage=off" : "LIVE CAN; synthetic=off");
+    break;
   case 'h':
   case 'H':
   case '?':
@@ -284,17 +292,36 @@ static void app_gui_task(void *argument) {
   ui_init();
   app_diagnostics_ui_init();
   /* Telemetry's session ID is the boot ID; journal recovery advances it past saved boots. */
-  app_emmc_log_get_status(&storage);
-  app_fault_history_init(storage.session_id);
-  app_fault_history_attach(app_emmc_fault_read, app_emmc_fault_write, app_emmc_fault_capacity());
-  app_ui_refresh(&data, &aux_state, HAL_GetTick());
+  if (app_demo_active) {
+    lv_obj_t *banner = lv_label_create(lv_layer_top());
+    lv_label_set_text(banner, "DEMO");
+    lv_obj_set_style_text_color(banner, lv_color_hex(0xFFB000U), 0);
+    lv_obj_set_style_bg_color(banner, lv_color_black(), 0);
+    lv_obj_set_style_bg_opa(banner, LV_OPA_COVER, 0);
+    lv_obj_set_style_pad_all(banner, 2, 0);
+    lv_obj_align(banner, LV_ALIGN_TOP_RIGHT, -2, 0);
+    lv_obj_clear_flag(banner, LV_OBJ_FLAG_CLICKABLE);
+  } else {
+    app_emmc_log_get_status(&storage);
+    app_fault_history_init(storage.session_id);
+    app_fault_history_attach(app_emmc_fault_read, app_emmc_fault_write, app_emmc_fault_capacity());
+    app_ui_refresh(&data, &aux_state, HAL_GetTick());
+  }
 
   for (;;) {
     while (xQueueReceive(app_ui_queue, &data, 0U) == pdPASS) {
     }
     now_ms = HAL_GetTick();
     if ((uint32_t)(now_ms - last_refresh_ms) >= 100U) {
-      app_ui_refresh(&data, &aux_state, now_ms);
+      if (app_demo_active) {
+        app_demo_sample(now_ms, &data, &aux_state);
+        app_ui_preview(&data, &aux_state, now_ms);
+        lv_label_set_text(app_ui_history_journal, "DEMO");
+        lv_label_set_text(app_ui_history_summary, "Synthetic values - history disabled");
+        lv_label_set_text(app_ui_history_status, "CAN disabled | no storage writes");
+      } else {
+        app_ui_refresh(&data, &aux_state, now_ms);
+      }
       last_refresh_ms = now_ms;
     }
     app_fault_dump_step(&dump_next);
@@ -404,9 +431,11 @@ static void app_console_task(void *argument) {
  * returns on the first allocation failure without deleting resources/tasks already
  * created. The function starts neither the scheduler nor a physical input binding.
  */
-bool app_tasks_start(void) {
+bool app_tasks_start(bool demo_mode) {
+  app_demo_active = demo_mode;
   app_data_log_init();
-  (void)app_emmc_log_init();
+  if (!app_demo_active)
+    (void)app_emmc_log_init();
 
   app_ui_queue = xQueueCreate(1U, sizeof(app_can_dashboard_data_t));
   if (app_ui_queue == NULL) {
@@ -419,9 +448,10 @@ bool app_tasks_start(void) {
     return false;
   }
 
-  if (xTaskCreate(
+  if (!app_demo_active &&
+      xTaskCreate(
           app_can_rx_task, "can_rx", APP_CAN_TASK_STACK_WORDS, NULL, APP_CAN_TASK_PRIORITY, NULL) !=
-      pdPASS) {
+          pdPASS) {
     return false;
   }
 

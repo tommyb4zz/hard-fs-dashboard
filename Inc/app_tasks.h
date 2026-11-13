@@ -1,6 +1,6 @@
 /**
- * File purpose: Expose application task creation to main before scheduler startup. The implementation
- * initializes RAM/eMMC logs, creates one overwrite queue and GUI/CAN/console tasks;
+ * File purpose: Expose application task creation to main before scheduler startup. The
+ * implementation initializes RAM/eMMC logs, creates one overwrite queue and GUI/CAN/console tasks;
  * false reports queue/task allocation failure without rolling back prior resources. Task
  * parameters, periods and placeholder inputs remain implementation details.
  */
@@ -15,9 +15,9 @@ extern "C" {
 #include <stdbool.h>
 
 /**
- * Initialize the loggers, allocate the one-element dashboard queue and create GUI, CAN and
- * console tasks; return false on queue/task allocation failure, otherwise true. eMMC
- * initialization failure does not stop task creation.
+ * Start live CAN tasks by default, or an explicit synthetic demo when demo_mode is true.
+ * Demo skips eMMC initialization, journal attachment and the CAN task. Return false on
+ * queue/task allocation failure. eMMC failure does not stop live task creation.
  *
  * Call before starting the scheduler. RAM initialization is unconditional and eMMC failure
  * is ignored; allocate a queue holding exactly one full snapshot, then GUI/CAN/console
@@ -25,7 +25,7 @@ extern "C" {
  * returns on the first allocation failure without deleting resources/tasks already
  * created. The function starts neither the scheduler nor a physical input binding.
  */
-bool app_tasks_start(void);
+bool app_tasks_start(bool demo_mode);
 
 #ifdef __cplusplus
 }

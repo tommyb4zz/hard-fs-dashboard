@@ -50,6 +50,7 @@ enable_testing()
 add_executable(dashboard_ui_tests
     "${DASHBOARD_ROOT}/tests/dashboard_ui/test_binding.c"
     render.c "${DASHBOARD_ROOT}/Src/app_dashboard_ui.c"
+    "${DASHBOARD_ROOT}/Src/app_demo.c"
     "${DASHBOARD_ROOT}/Src/app_diagnostics_ui.c"
     "${DASHBOARD_ROOT}/Src/app_fault_history.c"
     "${DASHBOARD_ROOT}/Src/app_fault_monitor.c")

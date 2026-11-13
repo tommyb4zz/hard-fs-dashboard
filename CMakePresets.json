@@ -27,14 +27,23 @@
             "name": "Debug",
             "inherits": "default",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug"
+                "CMAKE_BUILD_TYPE": "Debug",
+                "APP_DEMO_BOOT": "OFF"
             }
         },
         {
             "name": "Release",
             "inherits": "default",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release"
+                "CMAKE_BUILD_TYPE": "Release",
+                "APP_DEMO_BOOT": "OFF"
+            }
+        },
+        {
+            "name": "Demo",
+            "inherits": "Debug",
+            "cacheVariables": {
+                "APP_DEMO_BOOT": "ON"
             }
         }
     ],
@@ -51,6 +60,10 @@
         {
             "name": "Release",
             "configurePreset": "Release"
+        },
+        {
+            "name": "Demo",
+            "configurePreset": "Demo"
         }
     ]
 }

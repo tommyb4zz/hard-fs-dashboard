@@ -83,6 +83,10 @@ void app_ui_apply_dashboard_data(const app_can_dashboard_data_t *data);
 void app_ui_refresh(const app_can_dashboard_data_t *data,
                     const app_aux_ui_state_t *aux,
                     uint32_t now_ms);
+/** Render an explicit synthetic preview without reading storage or recording faults. */
+void app_ui_preview(const app_can_dashboard_data_t *data,
+                    const app_aux_ui_state_t *aux,
+                    uint32_t now_ms);
 /**
  * Apply auxiliary values to existing objects, rendering unknown speed/mode as dashes.
  * Unknown digital inputs use neutral colors; show every status during boot or when any

@@ -1013,6 +1013,44 @@ static int replay_stdin(void) {
   return ferror(stdin) ? 1 : 0;
 }
 
+/** A conforming slave that joins after an unacknowledged request supplies all ten signals. */
+static bool test_slave_connects_after_no_ack(void) {
+  reset_state();
+  CHECK(app_can_init());
+  CHECK(app_hfdcan.Init.Mode == FDCAN_MODE_NORMAL);
+  CHECK(app_hfdcan.Init.NominalPrescaler == 5U);
+  CHECK(app_hfdcan.Init.NominalTimeSeg1 == 8U && app_hfdcan.Init.NominalTimeSeg2 == 1U);
+  app_can_dashboard_data_t data = {0};
+  fake_tick = 50U;
+  CHECK(!app_can_poll_dashboard_data(&data));
+  fake_tx_free = 0U; /* Pending controller TX cannot complete until another node ACKs. */
+  fake_tick = 5000U;
+  CHECK(!app_can_poll_dashboard_data(&data));
+  CHECK(fake_tx_count == 1U && data.valid_mask == 0U);
+  CHECK(data.request_timeouts == 1U);
+  const uint16_t raw[] = {4000U, 40000U, 33767U, 160U, 60U, 20U, 35U, 32000U, 41000U, 37000U};
+  fake_tx_free = 1U; /* Slave joins, ACKs the pending frame and replies. */
+  for (unsigned i = 0; i < APP_CAN_REQUEST_COUNT; ++i) {
+    fake_tick += 50U;
+    enqueue(response(app_can_request_table[i].pid, raw[i]));
+    CHECK(app_can_poll_dashboard_data(&data));
+    CHECK(app_can_signal_is_fresh(&data, (app_can_signal_id_t)i, fake_tick));
+  }
+  CHECK(data.valid_mask == (1U << APP_CAN_SIGNAL_COUNT) - 1U);
+  CHECK(data.pack_voltage_deci_volts == 4000U);
+  CHECK(data.pack_summed_voltage_deci_volts == 4000U);
+  CHECK(data.pack_current_deci_amps == 1000);
+  CHECK(data.pack_state_of_charge == 80U);
+  CHECK(data.highest_temperature_c == 60 && data.lowest_temperature_c == 20);
+  CHECK(data.average_temperature_c == 35);
+  CHECK(data.lowest_cell_voltage_100uv == 32000U);
+  CHECK(data.highest_cell_voltage_100uv == 41000U);
+  CHECK(data.average_cell_voltage_100uv == 37000U);
+  CHECK(fake_tx_count > 1U);
+  CHECK(data.rejected_frames == 0U);
+  return true;
+}
+
 /**
  * Run independent groups, a payload-overflow check, or the exclusively virtual stdin
  * replay adapter.
@@ -1054,6 +1092,7 @@ int main(int argc, char **argv) {
       {"RX failure, FIFO burst and recovery", test_rx_failure_fifo_burst_and_recovery},
       {"unsolicited and malformed pending responses",
        test_unsolicited_and_malformed_pending_responses},
+      {"slave joins after no ACK", test_slave_connects_after_no_ack},
   };
   unsigned failures = 0U;
   for (unsigned i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {

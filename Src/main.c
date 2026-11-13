@@ -40,6 +40,7 @@ static void DebugConsole_Init(void);
  */
 int main(void) {
   BSP_QSPI_Init_t qspi_init;
+  bool demo_mode = false;
 
   MPU_Config();
   SCB_EnableICache();
@@ -50,9 +51,17 @@ int main(void) {
   SystemClock_Config();
   DebugConsole_Init();
 
+  if (BSP_PB_Init(BUTTON_USER, BUTTON_MODE_GPIO) != BSP_ERROR_NONE)
+    Error_Handler();
+  demo_mode = BSP_PB_GetState(BUTTON_USER) == GPIO_PIN_SET;
+#ifdef APP_DEMO_BOOT
+  demo_mode = true;
+#endif
+
   printf("\r\n[boot] hard-fs-dashboard build=%s can_debug=%u\r\n",
          APP_BUILD_CONFIGURATION_NAME,
          app_can_is_debug_enabled() ? 1U : 0U);
+  printf("[boot] source=%s\r\n", demo_mode ? "DEMO (synthetic; CAN/storage disabled)" : "LIVE CAN");
 
   HAL_Delay(50);
 
@@ -72,7 +81,7 @@ int main(void) {
   __ISB();
   SCB_InvalidateICache();
 
-  if (!app_tasks_start()) {
+  if (!app_tasks_start(demo_mode)) {
     Error_Handler();
   }
 

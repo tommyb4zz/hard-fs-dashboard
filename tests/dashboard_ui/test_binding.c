@@ -9,6 +9,7 @@
 #include <string.h>
 
 #include "app_dashboard_ui.h"
+#include "app_demo.h"
 #include "app_data_log.h"
 #include "app_diagnostics_ui.h"
 #include "app_emmc_log.h"
@@ -260,6 +261,27 @@ static void test_battery_labels_and_storage_usage(void) {
   assert_text(app_ui_history_status, "CAN timeouts 12 | bad frames 3 | RAM 0% | MMC 0% ERROR");
   test_ram_capacity = 4096U;
   test_emmc_status.ready = true;
+}
+
+/** Synthetic preview uses the real bindings while leaving fault history unchanged. */
+static void test_board_demo_preview(void) {
+  app_can_dashboard_data_t data = {0};
+  app_aux_ui_state_t aux = {0};
+  uint32_t count = app_fault_history_count();
+  app_demo_sample(0U, &data, &aux);
+  app_ui_preview(&data, &aux, 0U);
+  assert_text(app_ui_pack_values[APP_PACK_ROW_VOLTAGE], "320.0");
+  assert_text(app_ui_pack_values[APP_PACK_ROW_CURRENT], "-40.0");
+  app_demo_sample(20000U, &data, &aux);
+  app_ui_preview(&data, &aux, 20000U);
+  assert_text(app_ui_pack_values[APP_PACK_ROW_VOLTAGE], "400.0");
+  assert_text(app_ui_pack_values[APP_PACK_ROW_SOC], "90");
+  assert_text(ui_labelBatteryTemperature, "TEMP 55C");
+  assert(!lv_obj_has_flag(ui_imgBattLevelFill, LV_OBJ_FLAG_HIDDEN));
+  app_demo_sample(38000U, &data, &aux);
+  assert(aux.status_signals[APP_STATUS_SIGNAL_IMD].fault_active);
+  app_ui_preview(&data, &aux, 38000U);
+  assert(app_fault_history_count() == count);
 }
 
 /*
@@ -724,6 +746,7 @@ int main(int argc, char **argv) {
   test_auxiliary_unknowns_and_faults();
   test_existing_demo();
   test_battery_labels_and_storage_usage();
+  test_board_demo_preview();
   test_repeated_captures_keep_navigation_text(argv[1]);
   test_freshness_and_missing_siblings();
   test_fault_events_survive_recovery();

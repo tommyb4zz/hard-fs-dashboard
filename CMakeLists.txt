@@ -20,6 +20,8 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS ON)
 
+option(APP_DEMO_BOOT "Start with labelled synthetic values; disable CAN and storage" OFF)
+
 set(cpu_PARAMS ${CPU_FLAGS})
 
 set(linker_script_SRC
@@ -29,6 +31,7 @@ set(linker_script_SRC
 set(sources_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/Src/app_can_config.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Src/app_can.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/Src/app_demo.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Src/app_data_log.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Src/app_emmc_log.c
     ${CMAKE_CURRENT_SOURCE_DIR}/Src/app_tasks.c
@@ -105,6 +108,9 @@ set(symbols_COMMON
     CORE_CM7
     LV_DRV_NO_CONF
 )
+if(APP_DEMO_BOOT)
+    list(APPEND symbols_COMMON APP_DEMO_BOOT=1)
+endif()
 
 set(common_compile_options
     ${cpu_PARAMS}

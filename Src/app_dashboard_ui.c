@@ -546,6 +546,18 @@ static void app_ui_apply_speed_statistics(const app_aux_ui_state_t *aux) {
   app_ui_text(ui_labelDebugSpeedAvg, "%lu", (unsigned long)((sum + samples / 2U) / samples));
   app_ui_text(ui_labelDebugSpeedLow, "%u", (unsigned)minimum);
 }
+/** Render synthetic values through the same bindings without accessing the journal. */
+void app_ui_preview(const app_can_dashboard_data_t *data,
+                    const app_aux_ui_state_t *aux,
+                    uint32_t now_ms) {
+  app_emmc_log_status_t storage = {0};
+  if (data == NULL || aux == NULL)
+    return;
+  app_ui_apply_at(data, &storage, now_ms);
+  app_ui_apply_aux_state(aux, now_ms);
+  app_ui_apply_speed_statistics(aux);
+}
+
 /** Render live state and record malfunction episodes, never clearing previous events. */
 void app_ui_refresh(const app_can_dashboard_data_t *data,
                     const app_aux_ui_state_t *aux,
