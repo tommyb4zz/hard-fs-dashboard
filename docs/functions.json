@@ -25,10 +25,10 @@
       "references": []
     },
     {
-      "id": "CMakeLists.txt::configure_embedded_library:174",
+      "id": "CMakeLists.txt::configure_embedded_library:180",
       "name": "configure_embedded_library",
       "file": "CMakeLists.txt",
-      "line": 174,
+      "line": 180,
       "language": "CMake",
       "static": true,
       "documented": true,
@@ -1538,10 +1538,31 @@
       ]
     },
     {
-      "id": "Src/app_dashboard_ui.c::app_ui_refresh:550",
-      "name": "app_ui_refresh",
+      "id": "Src/app_dashboard_ui.c::app_ui_preview:550",
+      "name": "app_ui_preview",
       "file": "Src/app_dashboard_ui.c",
       "line": 550,
+      "language": "C",
+      "static": false,
+      "documented": true,
+      "description": "Render synthetic values through the same bindings without accessing the journal.",
+      "calls": [
+        "app_ui_apply_at",
+        "app_ui_apply_aux_state",
+        "app_ui_apply_speed_statistics"
+      ],
+      "references": [
+        "aux",
+        "data",
+        "now_ms",
+        "storage"
+      ]
+    },
+    {
+      "id": "Src/app_dashboard_ui.c::app_ui_refresh:562",
+      "name": "app_ui_refresh",
+      "file": "Src/app_dashboard_ui.c",
+      "line": 562,
       "language": "C",
       "static": false,
       "documented": true,
@@ -1721,6 +1742,113 @@
         "count",
         "index",
         "sample"
+      ]
+    },
+    {
+      "id": "Src/app_demo.c::app_demo_sample:13",
+      "name": "app_demo_sample",
+      "file": "Src/app_demo.c",
+      "line": 13,
+      "language": "C",
+      "static": false,
+      "documented": true,
+      "description": "Fill one synthetic sample, including scheduled stale/missing data and recovery.",
+      "calls": [
+        "memset"
+      ],
+      "references": [
+        "APP_CAN_SIGNAL_COUNT",
+        "APP_CAN_SIGNAL_SOC",
+        "APP_DRIVE_MODE_DRIVE",
+        "APP_DRIVE_MODE_NEUTRAL",
+        "APP_STATUS_SIGNAL_COUNT",
+        "APP_STATUS_SIGNAL_IMD",
+        "aux",
+        "data",
+        "i",
+        "now_ms",
+        "paused_at",
+        "phase",
+        "power",
+        "ramp"
+      ]
+    },
+    {
+      "id": "Src/app_demo.c::app_demo_read:63",
+      "name": "app_demo_read",
+      "file": "Src/app_demo.c",
+      "line": 63,
+      "language": "C",
+      "static": true,
+      "documented": true,
+      "description": "Read an immutable RAM slot or report untouched storage, just as the real journal does.",
+      "calls": [],
+      "references": [
+        "APP_FAULT_HISTORY_CAPACITY",
+        "APP_FAULT_SLOT_ERASED",
+        "APP_FAULT_SLOT_IO_ERROR",
+        "APP_FAULT_SLOT_VALID",
+        "demo_journal",
+        "demo_journal_count",
+        "event",
+        "index"
+      ]
+    },
+    {
+      "id": "Src/app_demo.c::app_demo_write:73",
+      "name": "app_demo_write",
+      "file": "Src/app_demo.c",
+      "line": 73,
+      "language": "C",
+      "static": true,
+      "documented": true,
+      "description": "Append a RAM event once; refuse occupied slots and finite-capacity overflow.",
+      "calls": [],
+      "references": [
+        "APP_FAULT_HISTORY_CAPACITY",
+        "demo_journal",
+        "demo_journal_count",
+        "event",
+        "index"
+      ]
+    },
+    {
+      "id": "Src/app_demo.c::app_demo_history_init:81",
+      "name": "app_demo_history_init",
+      "file": "Src/app_demo.c",
+      "line": 81,
+      "language": "C",
+      "static": false,
+      "documented": true,
+      "description": "Initialize the optional RAM-only history backend for synthetic episode tests.",
+      "calls": [
+        "app_fault_history_attach",
+        "app_fault_history_init"
+      ],
+      "references": [
+        "APP_FAULT_HISTORY_CAPACITY",
+        "app_demo_read",
+        "app_demo_write",
+        "demo_history_initialized"
+      ]
+    },
+    {
+      "id": "Src/app_demo.c::app_demo_observe:90",
+      "name": "app_demo_observe",
+      "file": "Src/app_demo.c",
+      "line": 90,
+      "language": "C",
+      "static": false,
+      "documented": true,
+      "description": "Pass synthetic inputs to the episode monitor using the RAM-only history backend.",
+      "calls": [
+        "app_fault_monitor_update"
+      ],
+      "references": [
+        "aux",
+        "data",
+        "now_ms",
+        "storage"
       ]
     },
     {
@@ -3389,10 +3517,10 @@
       ]
     },
     {
-      "id": "Src/app_tasks.c::app_console_print_help:62",
+      "id": "Src/app_tasks.c::app_console_print_help:65",
       "name": "app_console_print_help",
       "file": "Src/app_tasks.c",
-      "line": 62,
+      "line": 65,
       "language": "C",
       "static": true,
       "documented": true,
@@ -3403,10 +3531,10 @@
       "references": []
     },
     {
-      "id": "Src/app_tasks.c::app_console_print_log_info:75",
+      "id": "Src/app_tasks.c::app_console_print_log_info:78",
       "name": "app_console_print_log_info",
       "file": "Src/app_tasks.c",
-      "line": 75,
+      "line": 78,
       "language": "C",
       "static": true,
       "documented": true,
@@ -3420,10 +3548,10 @@
       "references": []
     },
     {
-      "id": "Src/app_tasks.c::app_console_print_emmc_log_info:90",
+      "id": "Src/app_tasks.c::app_console_print_emmc_log_info:93",
       "name": "app_console_print_emmc_log_info",
       "file": "Src/app_tasks.c",
-      "line": 90,
+      "line": 93,
       "language": "C",
       "static": true,
       "documented": true,
@@ -3437,10 +3565,10 @@
       ]
     },
     {
-      "id": "Src/app_tasks.c::app_console_handle_command:114",
+      "id": "Src/app_tasks.c::app_console_handle_command:117",
       "name": "app_console_handle_command",
       "file": "Src/app_tasks.c",
-      "line": 114,
+      "line": 117,
       "language": "C",
       "static": true,
       "documented": true,
@@ -3460,6 +3588,7 @@
         "printf"
       ],
       "references": [
+        "app_demo_active",
         "app_fault_dump_requested",
         "can_debug_was_enabled",
         "command",
@@ -3467,10 +3596,10 @@
       ]
     },
     {
-      "id": "Src/app_tasks.c::app_fault_dump_step:222",
+      "id": "Src/app_tasks.c::app_fault_dump_step:230",
       "name": "app_fault_dump_step",
       "file": "Src/app_tasks.c",
-      "line": 222,
+      "line": 230,
       "language": "C",
       "static": true,
       "documented": true,
@@ -3493,10 +3622,10 @@
       ]
     },
     {
-      "id": "Src/app_tasks.c::app_gui_task:269",
+      "id": "Src/app_tasks.c::app_gui_task:277",
       "name": "app_gui_task",
       "file": "Src/app_tasks.c",
-      "line": 269,
+      "line": 277,
       "language": "C",
       "static": true,
       "documented": true,
@@ -3504,14 +3633,27 @@
       "calls": [
         "HAL_GetTick",
         "LCD_init",
+        "app_demo_sample",
         "app_diagnostics_ui_init",
         "app_emmc_fault_capacity",
         "app_emmc_log_get_status",
         "app_fault_dump_step",
         "app_fault_history_attach",
         "app_fault_history_init",
+        "app_ui_preview",
         "app_ui_refresh",
+        "lv_color_black",
+        "lv_color_hex",
         "lv_init",
+        "lv_label_create",
+        "lv_label_set_text",
+        "lv_layer_top",
+        "lv_obj_align",
+        "lv_obj_clear_flag",
+        "lv_obj_set_style_bg_color",
+        "lv_obj_set_style_bg_opa",
+        "lv_obj_set_style_pad_all",
+        "lv_obj_set_style_text_color",
         "lv_tick_inc",
         "lv_timer_handler",
         "pdMS_TO_TICKS",
@@ -3523,12 +3665,20 @@
       ],
       "references": [
         "APP_GUI_TASK_PERIOD_MS",
+        "LV_ALIGN_TOP_RIGHT",
+        "LV_OBJ_FLAG_CLICKABLE",
+        "LV_OPA_COVER",
         "UINT32_MAX",
+        "app_demo_active",
         "app_emmc_fault_read",
         "app_emmc_fault_write",
+        "app_ui_history_journal",
+        "app_ui_history_status",
+        "app_ui_history_summary",
         "app_ui_queue",
         "argument",
         "aux_state",
+        "banner",
         "data",
         "dump_next",
         "last_lv_tick",
@@ -3541,10 +3691,10 @@
       ]
     },
     {
-      "id": "Src/app_tasks.c::app_can_rx_task:321",
+      "id": "Src/app_tasks.c::app_can_rx_task:348",
       "name": "app_can_rx_task",
       "file": "Src/app_tasks.c",
-      "line": 321,
+      "line": 348,
       "language": "C",
       "static": true,
       "documented": true,
@@ -3574,10 +3724,10 @@
       ]
     },
     {
-      "id": "Src/app_tasks.c::app_console_task:370",
+      "id": "Src/app_tasks.c::app_console_task:397",
       "name": "app_console_task",
       "file": "Src/app_tasks.c",
-      "line": 370,
+      "line": 397,
       "language": "C",
       "static": true,
       "documented": true,
@@ -3604,10 +3754,10 @@
       ]
     },
     {
-      "id": "Src/app_tasks.c::app_tasks_start:407",
+      "id": "Src/app_tasks.c::app_tasks_start:434",
       "name": "app_tasks_start",
       "file": "Src/app_tasks.c",
-      "line": 407,
+      "line": 434,
       "language": "C",
       "static": false,
       "documented": true,
@@ -3628,8 +3778,10 @@
         "app_can_dashboard_data_t",
         "app_can_rx_task",
         "app_console_task",
+        "app_demo_active",
         "app_gui_task",
         "app_ui_queue",
+        "demo_mode",
         "pdPASS"
       ]
     },
@@ -3643,6 +3795,8 @@
       "documented": true,
       "description": "Start firmware from the reset handler; there are no caller arguments and successful execution stays inside the FreeRTOS scheduler. Configure MPU regions before enabling instruction/data caches, then initialize HAL, clocks and the COM1 debug console. Initialize QSPI in QPI/DTR dual-flash mode and enable memory mapping before any UI code or assets placed at 0x90000000 can be used. Barriers and instruction-cache invalidation follow the mapping change. Print the build/debug settings, wait 50 ms, create application tasks and start scheduling. A QSPI error, task-creation failure or scheduler return enters the nonreturning Error_Handler. This path is not executed by the desktop synthetic runner; mapped flash must be programmed separately on hardware.",
       "calls": [
+        "BSP_PB_GetState",
+        "BSP_PB_Init",
         "BSP_QSPI_EnableMemoryMappedMode",
         "BSP_QSPI_Init",
         "DebugConsole_Init",
@@ -3663,18 +3817,23 @@
       ],
       "references": [
         "APP_BUILD_CONFIGURATION_NAME",
+        "APP_DEMO_BOOT",
         "BSP_ERROR_NONE",
+        "BUTTON_MODE_GPIO",
+        "BUTTON_USER",
+        "GPIO_PIN_SET",
         "MT25TL01G_DTR_TRANSFER",
         "MT25TL01G_DUALFLASH_ENABLE",
         "MT25TL01G_QPI_MODE",
+        "demo_mode",
         "qspi_init"
       ]
     },
     {
-      "id": "Src/main.c::SystemClock_Config:96",
+      "id": "Src/main.c::SystemClock_Config:105",
       "name": "SystemClock_Config",
       "file": "Src/main.c",
-      "line": 96,
+      "line": 105,
       "language": "C",
       "static": false,
       "documented": true,
@@ -3721,10 +3880,10 @@
       ]
     },
     {
-      "id": "Src/main.c::Error_Handler:154",
+      "id": "Src/main.c::Error_Handler:163",
       "name": "Error_Handler",
       "file": "Src/main.c",
-      "line": 154,
+      "line": 163,
       "language": "C",
       "static": false,
       "documented": true,
@@ -3736,10 +3895,10 @@
       "references": []
     },
     {
-      "id": "Src/main.c::vApplicationStackOverflowHook:169",
+      "id": "Src/main.c::vApplicationStackOverflowHook:178",
       "name": "vApplicationStackOverflowHook",
       "file": "Src/main.c",
-      "line": 169,
+      "line": 178,
       "language": "C",
       "static": false,
       "documented": true,
@@ -3753,10 +3912,10 @@
       ]
     },
     {
-      "id": "Src/main.c::DebugConsole_Init:185",
+      "id": "Src/main.c::DebugConsole_Init:194",
       "name": "DebugConsole_Init",
       "file": "Src/main.c",
-      "line": 185,
+      "line": 194,
       "language": "C",
       "static": true,
       "documented": true,
@@ -3777,10 +3936,10 @@
       ]
     },
     {
-      "id": "Src/main.c::MPU_Config:216",
+      "id": "Src/main.c::MPU_Config:225",
       "name": "MPU_Config",
       "file": "Src/main.c",
-      "line": 216,
+      "line": 225,
       "language": "C",
       "static": true,
       "documented": true,
@@ -5680,10 +5839,42 @@
       ]
     },
     {
-      "id": "tests/can_host/test_app_can.c::main:1025",
+      "id": "tests/can_host/test_app_can.c::test_slave_connects_after_no_ack:1017",
+      "name": "test_slave_connects_after_no_ack",
+      "file": "tests/can_host/test_app_can.c",
+      "line": 1017,
+      "language": "C",
+      "static": true,
+      "documented": true,
+      "description": "A conforming slave that joins after an unacknowledged request supplies all ten signals.",
+      "calls": [
+        "CHECK",
+        "app_can_init",
+        "app_can_poll_dashboard_data",
+        "app_can_signal_is_fresh",
+        "enqueue",
+        "reset_state",
+        "response"
+      ],
+      "references": [
+        "APP_CAN_REQUEST_COUNT",
+        "APP_CAN_SIGNAL_COUNT",
+        "FDCAN_MODE_NORMAL",
+        "app_can_request_table",
+        "app_hfdcan",
+        "data",
+        "fake_tick",
+        "fake_tx_count",
+        "fake_tx_free",
+        "i",
+        "raw"
+      ]
+    },
+    {
+      "id": "tests/can_host/test_app_can.c::main:1063",
       "name": "main",
       "file": "tests/can_host/test_app_can.c",
-      "line": 1025,
+      "line": 1063,
       "language": "C",
       "static": false,
       "documented": true,
@@ -5716,6 +5907,7 @@
         "test_request_cycle_and_payload",
         "test_rx_failure_fifo_burst_and_recovery",
         "test_signal_freshness_boundaries",
+        "test_slave_connects_after_no_ack",
         "test_tick_rollover",
         "test_timeout_boundary",
         "test_tx_backpressure_and_recovery",
@@ -6339,10 +6531,10 @@
       ]
     },
     {
-      "id": "tests/dashboard_ui/test_binding.c::test_journal_read:30",
+      "id": "tests/dashboard_ui/test_binding.c::test_journal_read:31",
       "name": "test_journal_read",
       "file": "tests/dashboard_ui/test_binding.c",
-      "line": 30,
+      "line": 31,
       "language": "C",
       "static": true,
       "documented": true,
@@ -6360,10 +6552,10 @@
       ]
     },
     {
-      "id": "tests/dashboard_ui/test_binding.c::test_journal_write:40",
+      "id": "tests/dashboard_ui/test_binding.c::test_journal_write:41",
       "name": "test_journal_write",
       "file": "tests/dashboard_ui/test_binding.c",
-      "line": 40,
+      "line": 41,
       "language": "C",
       "static": true,
       "documented": true,
@@ -6378,10 +6570,10 @@
       ]
     },
     {
-      "id": "tests/dashboard_ui/test_binding.c::app_data_log_get_count:54",
+      "id": "tests/dashboard_ui/test_binding.c::app_data_log_get_count:55",
       "name": "app_data_log_get_count",
       "file": "tests/dashboard_ui/test_binding.c",
-      "line": 54,
+      "line": 55,
       "language": "C",
       "static": false,
       "documented": true,
@@ -6392,10 +6584,10 @@
       ]
     },
     {
-      "id": "tests/dashboard_ui/test_binding.c::app_data_log_get_capacity:64",
+      "id": "tests/dashboard_ui/test_binding.c::app_data_log_get_capacity:65",
       "name": "app_data_log_get_capacity",
       "file": "tests/dashboard_ui/test_binding.c",
-      "line": 64,
+      "line": 65,
       "language": "C",
       "static": false,
       "documented": true,
@@ -6406,10 +6598,10 @@
       ]
     },
     {
-      "id": "tests/dashboard_ui/test_binding.c::app_emmc_log_get_status:75",
+      "id": "tests/dashboard_ui/test_binding.c::app_emmc_log_get_status:76",
       "name": "app_emmc_log_get_status",
       "file": "tests/dashboard_ui/test_binding.c",
-      "line": 75,
+      "line": 76,
       "language": "C",
       "static": false,
       "documented": true,
@@ -6421,10 +6613,10 @@
       ]
     },
     {
-      "id": "tests/dashboard_ui/test_binding.c::assert_text_at:88",
+      "id": "tests/dashboard_ui/test_binding.c::assert_text_at:89",
       "name": "assert_text_at",
       "file": "tests/dashboard_ui/test_binding.c",
-      "line": 88,
+      "line": 89,
       "language": "C",
       "static": true,
       "documented": true,
@@ -6443,10 +6635,10 @@
       ]
     },
     {
-      "id": "tests/dashboard_ui/test_binding.c::assert_border_color:106",
+      "id": "tests/dashboard_ui/test_binding.c::assert_border_color:107",
       "name": "assert_border_color",
       "file": "tests/dashboard_ui/test_binding.c",
-      "line": 106,
+      "line": 107,
       "language": "C",
       "static": true,
       "documented": true,
@@ -6464,10 +6656,10 @@
       ]
     },
     {
-      "id": "tests/dashboard_ui/test_binding.c::test_auxiliary_unknowns_and_faults:119",
+      "id": "tests/dashboard_ui/test_binding.c::test_auxiliary_unknowns_and_faults:120",
       "name": "test_auxiliary_unknowns_and_faults",
       "file": "tests/dashboard_ui/test_binding.c",
-      "line": 119,
+      "line": 120,
       "language": "C",
       "static": true,
       "documented": true,
@@ -6503,10 +6695,10 @@
       ]
     },
     {
-      "id": "tests/dashboard_ui/test_binding.c::test_existing_demo:181",
+      "id": "tests/dashboard_ui/test_binding.c::test_existing_demo:182",
       "name": "test_existing_demo",
       "file": "tests/dashboard_ui/test_binding.c",
-      "line": 181,
+      "line": 182,
       "language": "C",
       "static": true,
       "documented": true,
@@ -6525,10 +6717,10 @@
       ]
     },
     {
-      "id": "tests/dashboard_ui/test_binding.c::test_battery_labels_and_storage_usage:213",
+      "id": "tests/dashboard_ui/test_binding.c::test_battery_labels_and_storage_usage:214",
       "name": "test_battery_labels_and_storage_usage",
       "file": "tests/dashboard_ui/test_binding.c",
-      "line": 213,
+      "line": 214,
       "language": "C",
       "static": true,
       "documented": true,
@@ -6560,10 +6752,41 @@
       ]
     },
     {
-      "id": "tests/dashboard_ui/test_binding.c::test_initial_measurements_are_unknown:269",
+      "id": "tests/dashboard_ui/test_binding.c::test_board_demo_preview:267",
+      "name": "test_board_demo_preview",
+      "file": "tests/dashboard_ui/test_binding.c",
+      "line": 267,
+      "language": "C",
+      "static": true,
+      "documented": true,
+      "description": "Synthetic preview uses the real bindings while leaving fault history unchanged.",
+      "calls": [
+        "app_demo_sample",
+        "app_fault_history_count",
+        "app_ui_preview",
+        "assert",
+        "assert_text",
+        "lv_obj_has_flag"
+      ],
+      "references": [
+        "APP_PACK_ROW_CURRENT",
+        "APP_PACK_ROW_SOC",
+        "APP_PACK_ROW_VOLTAGE",
+        "APP_STATUS_SIGNAL_IMD",
+        "LV_OBJ_FLAG_HIDDEN",
+        "app_ui_pack_values",
+        "aux",
+        "count",
+        "data",
+        "ui_imgBattLevelFill",
+        "ui_labelBatteryTemperature"
+      ]
+    },
+    {
+      "id": "tests/dashboard_ui/test_binding.c::test_initial_measurements_are_unknown:291",
       "name": "test_initial_measurements_are_unknown",
       "file": "tests/dashboard_ui/test_binding.c",
-      "line": 269,
+      "line": 291,
       "language": "C",
       "static": true,
       "documented": true,
@@ -6621,10 +6844,10 @@
       ]
     },
     {
-      "id": "tests/dashboard_ui/test_binding.c::known_battery:318",
+      "id": "tests/dashboard_ui/test_binding.c::known_battery:340",
       "name": "known_battery",
       "file": "tests/dashboard_ui/test_binding.c",
-      "line": 318,
+      "line": 340,
       "language": "C",
       "static": true,
       "documented": true,
@@ -6638,10 +6861,10 @@
       ]
     },
     {
-      "id": "tests/dashboard_ui/test_binding.c::healthy_auxiliary:343",
+      "id": "tests/dashboard_ui/test_binding.c::healthy_auxiliary:365",
       "name": "healthy_auxiliary",
       "file": "tests/dashboard_ui/test_binding.c",
-      "line": 343,
+      "line": 365,
       "language": "C",
       "static": true,
       "documented": true,
@@ -6655,10 +6878,10 @@
       ]
     },
     {
-      "id": "tests/dashboard_ui/test_binding.c::find_event:359",
+      "id": "tests/dashboard_ui/test_binding.c::find_event:381",
       "name": "find_event",
       "file": "tests/dashboard_ui/test_binding.c",
-      "line": 359,
+      "line": 381,
       "language": "C",
       "static": true,
       "documented": true,
@@ -6675,10 +6898,10 @@
       ]
     },
     {
-      "id": "tests/dashboard_ui/test_binding.c::test_freshness_and_missing_siblings:367",
+      "id": "tests/dashboard_ui/test_binding.c::test_freshness_and_missing_siblings:389",
       "name": "test_freshness_and_missing_siblings",
       "file": "tests/dashboard_ui/test_binding.c",
-      "line": 367,
+      "line": 389,
       "language": "C",
       "static": true,
       "documented": true,
@@ -6718,10 +6941,10 @@
       ]
     },
     {
-      "id": "tests/dashboard_ui/test_binding.c::test_fault_events_survive_recovery:418",
+      "id": "tests/dashboard_ui/test_binding.c::test_fault_events_survive_recovery:440",
       "name": "test_fault_events_survive_recovery",
       "file": "tests/dashboard_ui/test_binding.c",
-      "line": 418,
+      "line": 440,
       "language": "C",
       "static": true,
       "documented": true,
@@ -6753,10 +6976,10 @@
       ]
     },
     {
-      "id": "tests/dashboard_ui/test_binding.c::test_transient_storage_failure_is_retained:453",
+      "id": "tests/dashboard_ui/test_binding.c::test_transient_storage_failure_is_retained:475",
       "name": "test_transient_storage_failure_is_retained",
       "file": "tests/dashboard_ui/test_binding.c",
-      "line": 453,
+      "line": 475,
       "language": "C",
       "static": true,
       "documented": true,
@@ -6788,10 +7011,10 @@
       ]
     },
     {
-      "id": "tests/dashboard_ui/test_binding.c::find_button:476",
+      "id": "tests/dashboard_ui/test_binding.c::find_button:498",
       "name": "find_button",
       "file": "tests/dashboard_ui/test_binding.c",
-      "line": 476,
+      "line": 498,
       "language": "C",
       "static": true,
       "documented": true,
@@ -6817,10 +7040,10 @@
       ]
     },
     {
-      "id": "tests/dashboard_ui/test_binding.c::click_button:491",
+      "id": "tests/dashboard_ui/test_binding.c::click_button:513",
       "name": "click_button",
       "file": "tests/dashboard_ui/test_binding.c",
-      "line": 491,
+      "line": 513,
       "language": "C",
       "static": true,
       "documented": true,
@@ -6839,10 +7062,10 @@
       ]
     },
     {
-      "id": "tests/dashboard_ui/test_binding.c::capture_screen:498",
+      "id": "tests/dashboard_ui/test_binding.c::capture_screen:520",
       "name": "capture_screen",
       "file": "tests/dashboard_ui/test_binding.c",
-      "line": 498,
+      "line": 520,
       "language": "C",
       "static": true,
       "documented": true,
@@ -6860,10 +7083,10 @@
       ]
     },
     {
-      "id": "tests/dashboard_ui/test_binding.c::test_navigation_and_history_pages:506",
+      "id": "tests/dashboard_ui/test_binding.c::test_navigation_and_history_pages:528",
       "name": "test_navigation_and_history_pages",
       "file": "tests/dashboard_ui/test_binding.c",
-      "line": 506,
+      "line": 528,
       "language": "C",
       "static": true,
       "documented": true,
@@ -6914,10 +7137,10 @@
       ]
     },
     {
-      "id": "tests/dashboard_ui/test_binding.c::touch_tap:573",
+      "id": "tests/dashboard_ui/test_binding.c::touch_tap:595",
       "name": "touch_tap",
       "file": "tests/dashboard_ui/test_binding.c",
-      "line": 573,
+      "line": 595,
       "language": "C",
       "static": true,
       "documented": true,
@@ -6936,10 +7159,10 @@
       ]
     },
     {
-      "id": "tests/dashboard_ui/test_binding.c::test_touch_navigation:584",
+      "id": "tests/dashboard_ui/test_binding.c::test_touch_navigation:606",
       "name": "test_touch_navigation",
       "file": "tests/dashboard_ui/test_binding.c",
-      "line": 584,
+      "line": 606,
       "language": "C",
       "static": true,
       "documented": true,
@@ -6961,10 +7184,10 @@
       ]
     },
     {
-      "id": "tests/dashboard_ui/test_binding.c::test_missing_runtime_screens_are_tolerated:610",
+      "id": "tests/dashboard_ui/test_binding.c::test_missing_runtime_screens_are_tolerated:632",
       "name": "test_missing_runtime_screens_are_tolerated",
       "file": "tests/dashboard_ui/test_binding.c",
-      "line": 610,
+      "line": 632,
       "language": "C",
       "static": true,
       "documented": true,
@@ -6990,10 +7213,10 @@
       ]
     },
     {
-      "id": "tests/dashboard_ui/test_binding.c::assert_faults_caption_has_pixels:623",
+      "id": "tests/dashboard_ui/test_binding.c::assert_faults_caption_has_pixels:645",
       "name": "assert_faults_caption_has_pixels",
       "file": "tests/dashboard_ui/test_binding.c",
-      "line": 623,
+      "line": 645,
       "language": "C",
       "static": true,
       "documented": true,
@@ -7019,10 +7242,10 @@
       ]
     },
     {
-      "id": "tests/dashboard_ui/test_binding.c::test_repeated_captures_keep_navigation_text:641",
+      "id": "tests/dashboard_ui/test_binding.c::test_repeated_captures_keep_navigation_text:663",
       "name": "test_repeated_captures_keep_navigation_text",
       "file": "tests/dashboard_ui/test_binding.c",
-      "line": 641,
+      "line": 663,
       "language": "C",
       "static": true,
       "documented": true,
@@ -7063,10 +7286,10 @@
       ]
     },
     {
-      "id": "tests/dashboard_ui/test_binding.c::test_framebuffer_capture:688",
+      "id": "tests/dashboard_ui/test_binding.c::test_framebuffer_capture:710",
       "name": "test_framebuffer_capture",
       "file": "tests/dashboard_ui/test_binding.c",
-      "line": 688,
+      "line": 710,
       "language": "C",
       "static": true,
       "documented": true,
@@ -7089,10 +7312,10 @@
       ]
     },
     {
-      "id": "tests/dashboard_ui/test_binding.c::main:710",
+      "id": "tests/dashboard_ui/test_binding.c::main:732",
       "name": "main",
       "file": "tests/dashboard_ui/test_binding.c",
-      "line": 710,
+      "line": 732,
       "language": "C",
       "static": false,
       "documented": true,
@@ -7109,6 +7332,7 @@
         "strcmp",
         "test_auxiliary_unknowns_and_faults",
         "test_battery_labels_and_storage_usage",
+        "test_board_demo_preview",
         "test_existing_demo",
         "test_fault_events_survive_recovery",
         "test_framebuffer_capture",
@@ -7126,6 +7350,54 @@
         "argv",
         "test_journal_read",
         "test_journal_write"
+      ]
+    },
+    {
+      "id": "tests/demo/test_app_demo.c::main:9",
+      "name": "main",
+      "file": "tests/demo/test_app_demo.c",
+      "line": 9,
+      "language": "C",
+      "static": false,
+      "documented": true,
+      "description": "Check the demo's motion, signal loss, recovery and volatile fault episodes.",
+      "calls": [
+        "app_demo_history_init",
+        "app_demo_observe",
+        "app_demo_sample",
+        "app_fault_history_count",
+        "app_fault_history_get",
+        "app_fault_history_pending",
+        "assert",
+        "memcmp"
+      ],
+      "references": [
+        "APP_CAN_SIGNAL_COUNT",
+        "APP_CAN_SIGNAL_PACK_VOLTAGE",
+        "APP_CAN_SIGNAL_SOC",
+        "APP_CAN_STALE_MS",
+        "APP_DRIVE_MODE_COUNT",
+        "APP_FAULT_AUX_STATUS_FIRST",
+        "APP_FAULT_BMS_LINK",
+        "APP_FAULT_HISTORY_STORAGE",
+        "APP_FAULT_STATE_HEALTHY",
+        "APP_STATUS_SIGNAL_COUNT",
+        "APP_STATUS_SIGNAL_IMD",
+        "UINT32_MAX",
+        "aux",
+        "aux_before",
+        "before",
+        "data",
+        "event",
+        "i",
+        "now",
+        "saw_clear",
+        "saw_imd",
+        "saw_link",
+        "saw_soc",
+        "signal",
+        "speeds",
+        "ticks"
       ]
     },
     {
@@ -8871,6 +9143,27 @@
         "self.assertGreater",
         "self.assertTrue",
         "set"
+      ],
+      "references": []
+    },
+    {
+      "id": "tests/test_board_demo.py::BoardDemoTests.test_demo_inputs_are_fresh_bounded_and_change_over_time:10",
+      "name": "BoardDemoTests.test_demo_inputs_are_fresh_bounded_and_change_over_time",
+      "file": "tests/test_board_demo.py",
+      "line": 10,
+      "language": "Python",
+      "static": true,
+      "documented": true,
+      "description": "Run the real generator and RAM-only episode timeline under sanitizers.",
+      "calls": [
+        "Path",
+        "Path(__file__).resolve",
+        "self.assertEqual",
+        "self.assertIsNotNone",
+        "shutil.which",
+        "str",
+        "subprocess.run",
+        "tempfile.TemporaryDirectory"
       ],
       "references": []
     },
@@ -17132,7 +17425,7 @@
     },
     {
       "source": "Src/Lvgl_Porting/lvgl_port_lcd.c::lcd_error:33",
-      "target": "Src/main.c::Error_Handler:154",
+      "target": "Src/main.c::Error_Handler:163",
       "kind": "call"
     },
     {
@@ -17416,32 +17709,47 @@
       "kind": "call"
     },
     {
-      "source": "Src/app_dashboard_ui.c::app_ui_refresh:550",
+      "source": "Src/app_dashboard_ui.c::app_ui_preview:550",
       "target": "Src/app_dashboard_ui.c::app_ui_apply_at:403",
       "kind": "call"
     },
     {
-      "source": "Src/app_dashboard_ui.c::app_ui_refresh:550",
+      "source": "Src/app_dashboard_ui.c::app_ui_preview:550",
       "target": "Src/app_dashboard_ui.c::app_ui_apply_aux_state:320",
       "kind": "call"
     },
     {
-      "source": "Src/app_dashboard_ui.c::app_ui_refresh:550",
+      "source": "Src/app_dashboard_ui.c::app_ui_preview:550",
       "target": "Src/app_dashboard_ui.c::app_ui_apply_speed_statistics:528",
       "kind": "call"
     },
     {
-      "source": "Src/app_dashboard_ui.c::app_ui_refresh:550",
+      "source": "Src/app_dashboard_ui.c::app_ui_refresh:562",
+      "target": "Src/app_dashboard_ui.c::app_ui_apply_at:403",
+      "kind": "call"
+    },
+    {
+      "source": "Src/app_dashboard_ui.c::app_ui_refresh:562",
+      "target": "Src/app_dashboard_ui.c::app_ui_apply_aux_state:320",
+      "kind": "call"
+    },
+    {
+      "source": "Src/app_dashboard_ui.c::app_ui_refresh:562",
+      "target": "Src/app_dashboard_ui.c::app_ui_apply_speed_statistics:528",
+      "kind": "call"
+    },
+    {
+      "source": "Src/app_dashboard_ui.c::app_ui_refresh:562",
       "target": "Src/app_diagnostics_ui.c::app_diagnostics_ui_refresh_history:220",
       "kind": "call"
     },
     {
-      "source": "Src/app_dashboard_ui.c::app_ui_refresh:550",
+      "source": "Src/app_dashboard_ui.c::app_ui_refresh:562",
       "target": "Src/app_emmc_log.c::app_emmc_log_get_status:664",
       "kind": "call"
     },
     {
-      "source": "Src/app_dashboard_ui.c::app_ui_refresh:550",
+      "source": "Src/app_dashboard_ui.c::app_ui_refresh:562",
       "target": "Src/app_fault_monitor.c::app_fault_monitor_update:227",
       "kind": "call"
     },
@@ -17478,6 +17786,31 @@
     {
       "source": "Src/app_data_log.c::app_data_log_init:51",
       "target": "Src/app_data_log.c::app_data_log_reset:63",
+      "kind": "call"
+    },
+    {
+      "source": "Src/app_demo.c::app_demo_history_init:81",
+      "target": "Src/app_demo.c::app_demo_read:63",
+      "kind": "reference"
+    },
+    {
+      "source": "Src/app_demo.c::app_demo_history_init:81",
+      "target": "Src/app_demo.c::app_demo_write:73",
+      "kind": "reference"
+    },
+    {
+      "source": "Src/app_demo.c::app_demo_history_init:81",
+      "target": "Src/app_fault_history.c::app_fault_history_attach:33",
+      "kind": "call"
+    },
+    {
+      "source": "Src/app_demo.c::app_demo_history_init:81",
+      "target": "Src/app_fault_history.c::app_fault_history_init:13",
+      "kind": "call"
+    },
+    {
+      "source": "Src/app_demo.c::app_demo_observe:90",
+      "target": "Src/app_fault_monitor.c::app_fault_monitor_update:227",
       "kind": "call"
     },
     {
@@ -18016,238 +18349,248 @@
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_can_rx_task:321",
+      "source": "Src/app_tasks.c::app_can_rx_task:348",
       "target": "Src/app_can.c::app_can_init:928",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_can_rx_task:321",
+      "source": "Src/app_tasks.c::app_can_rx_task:348",
       "target": "Src/app_can.c::app_can_is_debug_enabled:499",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_can_rx_task:321",
+      "source": "Src/app_tasks.c::app_can_rx_task:348",
       "target": "Src/app_can.c::app_can_poll_dashboard_data:1031",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_can_rx_task:321",
+      "source": "Src/app_tasks.c::app_can_rx_task:348",
       "target": "Src/app_data_log.c::app_data_log_record:79",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_can_rx_task:321",
+      "source": "Src/app_tasks.c::app_can_rx_task:348",
       "target": "Src/app_emmc_log.c::app_emmc_log_append:556",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_console_handle_command:114",
+      "source": "Src/app_tasks.c::app_console_handle_command:117",
       "target": "Src/app_can.c::app_can_is_debug_enabled:499",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_console_handle_command:114",
+      "source": "Src/app_tasks.c::app_console_handle_command:117",
       "target": "Src/app_can.c::app_can_set_debug_enabled:489",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_console_handle_command:114",
+      "source": "Src/app_tasks.c::app_console_handle_command:117",
       "target": "Src/app_data_log.c::app_data_log_dump_csv:180",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_console_handle_command:114",
+      "source": "Src/app_tasks.c::app_console_handle_command:117",
       "target": "Src/app_data_log.c::app_data_log_reset:63",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_console_handle_command:114",
+      "source": "Src/app_tasks.c::app_console_handle_command:117",
       "target": "Src/app_emmc_log.c::app_emmc_log_dump_binary:789",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_console_handle_command:114",
+      "source": "Src/app_tasks.c::app_console_handle_command:117",
       "target": "Src/app_emmc_log.c::app_emmc_log_dump_csv:698",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_console_handle_command:114",
+      "source": "Src/app_tasks.c::app_console_handle_command:117",
       "target": "Src/app_emmc_log.c::app_emmc_log_flush:618",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_console_handle_command:114",
+      "source": "Src/app_tasks.c::app_console_handle_command:117",
       "target": "Src/app_emmc_log.c::app_emmc_log_reset_session:639",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_console_handle_command:114",
-      "target": "Src/app_tasks.c::app_console_print_emmc_log_info:90",
+      "source": "Src/app_tasks.c::app_console_handle_command:117",
+      "target": "Src/app_tasks.c::app_console_print_emmc_log_info:93",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_console_handle_command:114",
-      "target": "Src/app_tasks.c::app_console_print_help:62",
+      "source": "Src/app_tasks.c::app_console_handle_command:117",
+      "target": "Src/app_tasks.c::app_console_print_help:65",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_console_handle_command:114",
-      "target": "Src/app_tasks.c::app_console_print_log_info:75",
+      "source": "Src/app_tasks.c::app_console_handle_command:117",
+      "target": "Src/app_tasks.c::app_console_print_log_info:78",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_console_print_emmc_log_info:90",
+      "source": "Src/app_tasks.c::app_console_print_emmc_log_info:93",
       "target": "Src/app_emmc_log.c::app_emmc_log_get_status:664",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_console_print_log_info:75",
+      "source": "Src/app_tasks.c::app_console_print_log_info:78",
       "target": "Src/app_data_log.c::app_data_log_get_capacity:105",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_console_print_log_info:75",
+      "source": "Src/app_tasks.c::app_console_print_log_info:78",
       "target": "Src/app_data_log.c::app_data_log_get_count:116",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_console_print_log_info:75",
+      "source": "Src/app_tasks.c::app_console_print_log_info:78",
       "target": "Src/app_data_log.c::app_data_log_is_wrapped:132",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_console_task:370",
-      "target": "Src/app_tasks.c::app_console_handle_command:114",
+      "source": "Src/app_tasks.c::app_console_task:397",
+      "target": "Src/app_tasks.c::app_console_handle_command:117",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_console_task:370",
-      "target": "Src/app_tasks.c::app_console_print_emmc_log_info:90",
+      "source": "Src/app_tasks.c::app_console_task:397",
+      "target": "Src/app_tasks.c::app_console_print_emmc_log_info:93",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_console_task:370",
-      "target": "Src/app_tasks.c::app_console_print_help:62",
+      "source": "Src/app_tasks.c::app_console_task:397",
+      "target": "Src/app_tasks.c::app_console_print_help:65",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_console_task:370",
-      "target": "Src/app_tasks.c::app_console_print_log_info:75",
+      "source": "Src/app_tasks.c::app_console_task:397",
+      "target": "Src/app_tasks.c::app_console_print_log_info:78",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_fault_dump_step:222",
+      "source": "Src/app_tasks.c::app_fault_dump_step:230",
       "target": "Src/app_fault_history.c::app_fault_history_count:140",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_fault_dump_step:222",
+      "source": "Src/app_tasks.c::app_fault_dump_step:230",
       "target": "Src/app_fault_history.c::app_fault_history_get:125",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_fault_dump_step:222",
+      "source": "Src/app_tasks.c::app_fault_dump_step:230",
       "target": "Src/app_fault_history.c::app_fault_source_name:170",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_fault_dump_step:222",
+      "source": "Src/app_tasks.c::app_fault_dump_step:230",
       "target": "Src/app_fault_monitor.c::app_fault_describe:303",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_gui_task:269",
+      "source": "Src/app_tasks.c::app_gui_task:277",
       "target": "Src/Lvgl_Porting/lvgl_port_lcd.c::LCD_init:244",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_gui_task:269",
+      "source": "Src/app_tasks.c::app_gui_task:277",
       "target": "Src/Lvgl_Porting/lvgl_port_touchpad.c::touchpad_init:61",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_gui_task:269",
-      "target": "Src/app_dashboard_ui.c::app_ui_refresh:550",
+      "source": "Src/app_tasks.c::app_gui_task:277",
+      "target": "Src/app_dashboard_ui.c::app_ui_preview:550",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_gui_task:269",
+      "source": "Src/app_tasks.c::app_gui_task:277",
+      "target": "Src/app_dashboard_ui.c::app_ui_refresh:562",
+      "kind": "call"
+    },
+    {
+      "source": "Src/app_tasks.c::app_gui_task:277",
+      "target": "Src/app_demo.c::app_demo_sample:13",
+      "kind": "call"
+    },
+    {
+      "source": "Src/app_tasks.c::app_gui_task:277",
       "target": "Src/app_diagnostics_ui.c::app_diagnostics_ui_init:126",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_gui_task:269",
+      "source": "Src/app_tasks.c::app_gui_task:277",
       "target": "Src/app_emmc_log.c::app_emmc_fault_capacity:888",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_gui_task:269",
+      "source": "Src/app_tasks.c::app_gui_task:277",
       "target": "Src/app_emmc_log.c::app_emmc_fault_read:920",
       "kind": "reference"
     },
     {
-      "source": "Src/app_tasks.c::app_gui_task:269",
+      "source": "Src/app_tasks.c::app_gui_task:277",
       "target": "Src/app_emmc_log.c::app_emmc_fault_write:944",
       "kind": "reference"
     },
     {
-      "source": "Src/app_tasks.c::app_gui_task:269",
+      "source": "Src/app_tasks.c::app_gui_task:277",
       "target": "Src/app_emmc_log.c::app_emmc_log_get_status:664",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_gui_task:269",
+      "source": "Src/app_tasks.c::app_gui_task:277",
       "target": "Src/app_fault_history.c::app_fault_history_attach:33",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_gui_task:269",
+      "source": "Src/app_tasks.c::app_gui_task:277",
       "target": "Src/app_fault_history.c::app_fault_history_init:13",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_gui_task:269",
-      "target": "Src/app_tasks.c::app_fault_dump_step:222",
+      "source": "Src/app_tasks.c::app_gui_task:277",
+      "target": "Src/app_tasks.c::app_fault_dump_step:230",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_gui_task:269",
+      "source": "Src/app_tasks.c::app_gui_task:277",
       "target": "ui/ui.c::ui_init:44",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_tasks_start:407",
+      "source": "Src/app_tasks.c::app_tasks_start:434",
       "target": "Src/app_data_log.c::app_data_log_init:51",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_tasks_start:407",
+      "source": "Src/app_tasks.c::app_tasks_start:434",
       "target": "Src/app_emmc_log.c::app_emmc_log_init:490",
       "kind": "call"
     },
     {
-      "source": "Src/app_tasks.c::app_tasks_start:407",
-      "target": "Src/app_tasks.c::app_can_rx_task:321",
+      "source": "Src/app_tasks.c::app_tasks_start:434",
+      "target": "Src/app_tasks.c::app_can_rx_task:348",
       "kind": "reference"
     },
     {
-      "source": "Src/app_tasks.c::app_tasks_start:407",
-      "target": "Src/app_tasks.c::app_console_task:370",
+      "source": "Src/app_tasks.c::app_tasks_start:434",
+      "target": "Src/app_tasks.c::app_console_task:397",
       "kind": "reference"
     },
     {
-      "source": "Src/app_tasks.c::app_tasks_start:407",
-      "target": "Src/app_tasks.c::app_gui_task:269",
+      "source": "Src/app_tasks.c::app_tasks_start:434",
+      "target": "Src/app_tasks.c::app_gui_task:277",
       "kind": "reference"
     },
     {
-      "source": "Src/main.c::DebugConsole_Init:185",
-      "target": "Src/main.c::Error_Handler:154",
+      "source": "Src/main.c::DebugConsole_Init:194",
+      "target": "Src/main.c::Error_Handler:163",
       "kind": "call"
     },
     {
-      "source": "Src/main.c::SystemClock_Config:96",
-      "target": "Src/main.c::Error_Handler:154",
+      "source": "Src/main.c::SystemClock_Config:105",
+      "target": "Src/main.c::Error_Handler:163",
       "kind": "call"
     },
     {
@@ -18257,32 +18600,32 @@
     },
     {
       "source": "Src/main.c::main:41",
-      "target": "Src/app_tasks.c::app_tasks_start:407",
+      "target": "Src/app_tasks.c::app_tasks_start:434",
       "kind": "call"
     },
     {
       "source": "Src/main.c::main:41",
-      "target": "Src/main.c::DebugConsole_Init:185",
+      "target": "Src/main.c::DebugConsole_Init:194",
       "kind": "call"
     },
     {
       "source": "Src/main.c::main:41",
-      "target": "Src/main.c::Error_Handler:154",
+      "target": "Src/main.c::Error_Handler:163",
       "kind": "call"
     },
     {
       "source": "Src/main.c::main:41",
-      "target": "Src/main.c::MPU_Config:216",
+      "target": "Src/main.c::MPU_Config:225",
       "kind": "call"
     },
     {
       "source": "Src/main.c::main:41",
-      "target": "Src/main.c::SystemClock_Config:96",
+      "target": "Src/main.c::SystemClock_Config:105",
       "kind": "call"
     },
     {
-      "source": "Src/main.c::vApplicationStackOverflowHook:169",
-      "target": "Src/main.c::Error_Handler:154",
+      "source": "Src/main.c::vApplicationStackOverflowHook:178",
+      "target": "Src/main.c::Error_Handler:163",
       "kind": "call"
     },
     {
@@ -18366,102 +18709,107 @@
       "kind": "call"
     },
     {
-      "source": "tests/can_host/test_app_can.c::main:1025",
+      "source": "tests/can_host/test_app_can.c::main:1063",
       "target": "tests/can_host/test_app_can.c::replay_stdin:956",
       "kind": "call"
     },
     {
-      "source": "tests/can_host/test_app_can.c::main:1025",
+      "source": "tests/can_host/test_app_can.c::main:1063",
       "target": "tests/can_host/test_app_can.c::test_all_pid_conversions:381",
       "kind": "reference"
     },
     {
-      "source": "tests/can_host/test_app_can.c::main:1025",
+      "source": "tests/can_host/test_app_can.c::main:1063",
       "target": "tests/can_host/test_app_can.c::test_current_and_power_statistics:695",
       "kind": "reference"
     },
     {
-      "source": "tests/can_host/test_app_can.c::main:1025",
+      "source": "tests/can_host/test_app_can.c::main:1063",
       "target": "tests/can_host/test_app_can.c::test_dlc_bounds_and_unknown_messages:641",
       "kind": "reference"
     },
     {
-      "source": "tests/can_host/test_app_can.c::main:1025",
+      "source": "tests/can_host/test_app_can.c::main:1063",
       "target": "tests/can_host/test_app_can.c::test_each_pid_has_independent_validity_and_age:439",
       "kind": "reference"
     },
     {
-      "source": "tests/can_host/test_app_can.c::main:1025",
+      "source": "tests/can_host/test_app_can.c::main:1063",
       "target": "tests/can_host/test_app_can.c::test_exact_single_frame_lengths:591",
       "kind": "reference"
     },
     {
-      "source": "tests/can_host/test_app_can.c::main:1025",
+      "source": "tests/can_host/test_app_can.c::main:1063",
       "target": "tests/can_host/test_app_can.c::test_exhaustive_scalar_domains:560",
       "kind": "reference"
     },
     {
-      "source": "tests/can_host/test_app_can.c::main:1025",
+      "source": "tests/can_host/test_app_can.c::main:1063",
       "target": "tests/can_host/test_app_can.c::test_frame_metadata_rejection:613",
       "kind": "reference"
     },
     {
-      "source": "tests/can_host/test_app_can.c::main:1025",
+      "source": "tests/can_host/test_app_can.c::main:1063",
       "target": "tests/can_host/test_app_can.c::test_initialization_and_recovery:306",
       "kind": "reference"
     },
     {
-      "source": "tests/can_host/test_app_can.c::main:1025",
+      "source": "tests/can_host/test_app_can.c::main:1063",
       "target": "tests/can_host/test_app_can.c::test_invalid_replies_do_not_refresh_signal_age:492",
       "kind": "reference"
     },
     {
-      "source": "tests/can_host/test_app_can.c::main:1025",
+      "source": "tests/can_host/test_app_can.c::main:1063",
       "target": "tests/can_host/test_app_can.c::test_null_guards_and_configuration:332",
       "kind": "reference"
     },
     {
-      "source": "tests/can_host/test_app_can.c::main:1025",
+      "source": "tests/can_host/test_app_can.c::main:1063",
       "target": "tests/can_host/test_app_can.c::test_oversized_hal_payload:894",
       "kind": "call"
     },
     {
-      "source": "tests/can_host/test_app_can.c::main:1025",
+      "source": "tests/can_host/test_app_can.c::main:1063",
       "target": "tests/can_host/test_app_can.c::test_power_rounding_and_voltage_fallback:668",
       "kind": "reference"
     },
     {
-      "source": "tests/can_host/test_app_can.c::main:1025",
+      "source": "tests/can_host/test_app_can.c::main:1063",
       "target": "tests/can_host/test_app_can.c::test_request_cycle_and_payload:727",
       "kind": "reference"
     },
     {
-      "source": "tests/can_host/test_app_can.c::main:1025",
+      "source": "tests/can_host/test_app_can.c::main:1063",
       "target": "tests/can_host/test_app_can.c::test_rx_failure_fifo_burst_and_recovery:836",
       "kind": "reference"
     },
     {
-      "source": "tests/can_host/test_app_can.c::main:1025",
+      "source": "tests/can_host/test_app_can.c::main:1063",
       "target": "tests/can_host/test_app_can.c::test_signal_freshness_boundaries:414",
       "kind": "reference"
     },
     {
-      "source": "tests/can_host/test_app_can.c::main:1025",
+      "source": "tests/can_host/test_app_can.c::main:1063",
+      "target": "tests/can_host/test_app_can.c::test_slave_connects_after_no_ack:1017",
+      "kind": "reference"
+    },
+    {
+      "source": "tests/can_host/test_app_can.c::main:1063",
       "target": "tests/can_host/test_app_can.c::test_tick_rollover:786",
       "kind": "reference"
     },
     {
-      "source": "tests/can_host/test_app_can.c::main:1025",
+      "source": "tests/can_host/test_app_can.c::main:1063",
       "target": "tests/can_host/test_app_can.c::test_timeout_boundary:763",
       "kind": "reference"
     },
     {
-      "source": "tests/can_host/test_app_can.c::main:1025",
+      "source": "tests/can_host/test_app_can.c::main:1063",
       "target": "tests/can_host/test_app_can.c::test_tx_backpressure_and_recovery:809",
       "kind": "reference"
     },
     {
-      "source": "tests/can_host/test_app_can.c::main:1025",
+      "source": "tests/can_host/test_app_can.c::main:1063",
       "target": "tests/can_host/test_app_can.c::test_unsolicited_and_malformed_pending_responses:861",
       "kind": "reference"
     },
@@ -18751,6 +19099,36 @@
       "kind": "call"
     },
     {
+      "source": "tests/can_host/test_app_can.c::test_slave_connects_after_no_ack:1017",
+      "target": "Src/app_can.c::app_can_init:928",
+      "kind": "call"
+    },
+    {
+      "source": "tests/can_host/test_app_can.c::test_slave_connects_after_no_ack:1017",
+      "target": "Src/app_can.c::app_can_poll_dashboard_data:1031",
+      "kind": "call"
+    },
+    {
+      "source": "tests/can_host/test_app_can.c::test_slave_connects_after_no_ack:1017",
+      "target": "Src/app_can.c::app_can_signal_is_fresh:137",
+      "kind": "call"
+    },
+    {
+      "source": "tests/can_host/test_app_can.c::test_slave_connects_after_no_ack:1017",
+      "target": "tests/can_host/test_app_can.c::enqueue:280",
+      "kind": "call"
+    },
+    {
+      "source": "tests/can_host/test_app_can.c::test_slave_connects_after_no_ack:1017",
+      "target": "tests/can_host/test_app_can.c::reset_state:214",
+      "kind": "call"
+    },
+    {
+      "source": "tests/can_host/test_app_can.c::test_slave_connects_after_no_ack:1017",
+      "target": "tests/can_host/test_app_can.c::response:249",
+      "kind": "call"
+    },
+    {
       "source": "tests/can_host/test_app_can.c::test_tick_rollover:786",
       "target": "Src/app_can.c::app_can_init:928",
       "kind": "call"
@@ -18946,353 +19324,403 @@
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::capture_screen:498",
+      "source": "tests/dashboard_ui/test_binding.c::capture_screen:520",
       "target": "tools/dashboard_host/render.c::dashboard_render_capture:145",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::click_button:491",
-      "target": "tests/dashboard_ui/test_binding.c::find_button:476",
+      "source": "tests/dashboard_ui/test_binding.c::click_button:513",
+      "target": "tests/dashboard_ui/test_binding.c::find_button:498",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::find_button:476",
-      "target": "tests/dashboard_ui/test_binding.c::find_button:476",
+      "source": "tests/dashboard_ui/test_binding.c::find_button:498",
+      "target": "tests/dashboard_ui/test_binding.c::find_button:498",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::find_event:359",
+      "source": "tests/dashboard_ui/test_binding.c::find_event:381",
       "target": "Src/app_fault_history.c::app_fault_history_count:140",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::find_event:359",
+      "source": "tests/dashboard_ui/test_binding.c::find_event:381",
       "target": "Src/app_fault_history.c::app_fault_history_get:125",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::main:710",
+      "source": "tests/dashboard_ui/test_binding.c::main:732",
       "target": "Src/app_fault_history.c::app_fault_history_attach:33",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::main:710",
+      "source": "tests/dashboard_ui/test_binding.c::main:732",
       "target": "Src/app_fault_history.c::app_fault_history_init:13",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::main:710",
-      "target": "tests/dashboard_ui/test_binding.c::test_auxiliary_unknowns_and_faults:119",
+      "source": "tests/dashboard_ui/test_binding.c::main:732",
+      "target": "tests/dashboard_ui/test_binding.c::test_auxiliary_unknowns_and_faults:120",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::main:710",
-      "target": "tests/dashboard_ui/test_binding.c::test_battery_labels_and_storage_usage:213",
+      "source": "tests/dashboard_ui/test_binding.c::main:732",
+      "target": "tests/dashboard_ui/test_binding.c::test_battery_labels_and_storage_usage:214",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::main:710",
-      "target": "tests/dashboard_ui/test_binding.c::test_existing_demo:181",
+      "source": "tests/dashboard_ui/test_binding.c::main:732",
+      "target": "tests/dashboard_ui/test_binding.c::test_board_demo_preview:267",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::main:710",
-      "target": "tests/dashboard_ui/test_binding.c::test_fault_events_survive_recovery:418",
+      "source": "tests/dashboard_ui/test_binding.c::main:732",
+      "target": "tests/dashboard_ui/test_binding.c::test_existing_demo:182",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::main:710",
-      "target": "tests/dashboard_ui/test_binding.c::test_framebuffer_capture:688",
+      "source": "tests/dashboard_ui/test_binding.c::main:732",
+      "target": "tests/dashboard_ui/test_binding.c::test_fault_events_survive_recovery:440",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::main:710",
-      "target": "tests/dashboard_ui/test_binding.c::test_freshness_and_missing_siblings:367",
+      "source": "tests/dashboard_ui/test_binding.c::main:732",
+      "target": "tests/dashboard_ui/test_binding.c::test_framebuffer_capture:710",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::main:710",
-      "target": "tests/dashboard_ui/test_binding.c::test_initial_measurements_are_unknown:269",
+      "source": "tests/dashboard_ui/test_binding.c::main:732",
+      "target": "tests/dashboard_ui/test_binding.c::test_freshness_and_missing_siblings:389",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::main:710",
-      "target": "tests/dashboard_ui/test_binding.c::test_journal_read:30",
+      "source": "tests/dashboard_ui/test_binding.c::main:732",
+      "target": "tests/dashboard_ui/test_binding.c::test_initial_measurements_are_unknown:291",
+      "kind": "call"
+    },
+    {
+      "source": "tests/dashboard_ui/test_binding.c::main:732",
+      "target": "tests/dashboard_ui/test_binding.c::test_journal_read:31",
       "kind": "reference"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::main:710",
-      "target": "tests/dashboard_ui/test_binding.c::test_journal_write:40",
+      "source": "tests/dashboard_ui/test_binding.c::main:732",
+      "target": "tests/dashboard_ui/test_binding.c::test_journal_write:41",
       "kind": "reference"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::main:710",
-      "target": "tests/dashboard_ui/test_binding.c::test_missing_runtime_screens_are_tolerated:610",
+      "source": "tests/dashboard_ui/test_binding.c::main:732",
+      "target": "tests/dashboard_ui/test_binding.c::test_missing_runtime_screens_are_tolerated:632",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::main:710",
-      "target": "tests/dashboard_ui/test_binding.c::test_navigation_and_history_pages:506",
+      "source": "tests/dashboard_ui/test_binding.c::main:732",
+      "target": "tests/dashboard_ui/test_binding.c::test_navigation_and_history_pages:528",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::main:710",
-      "target": "tests/dashboard_ui/test_binding.c::test_repeated_captures_keep_navigation_text:641",
+      "source": "tests/dashboard_ui/test_binding.c::main:732",
+      "target": "tests/dashboard_ui/test_binding.c::test_repeated_captures_keep_navigation_text:663",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::main:710",
-      "target": "tests/dashboard_ui/test_binding.c::test_touch_navigation:584",
+      "source": "tests/dashboard_ui/test_binding.c::main:732",
+      "target": "tests/dashboard_ui/test_binding.c::test_touch_navigation:606",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::main:710",
-      "target": "tests/dashboard_ui/test_binding.c::test_transient_storage_failure_is_retained:453",
+      "source": "tests/dashboard_ui/test_binding.c::main:732",
+      "target": "tests/dashboard_ui/test_binding.c::test_transient_storage_failure_is_retained:475",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::main:710",
+      "source": "tests/dashboard_ui/test_binding.c::main:732",
       "target": "tools/dashboard_host/render.c::dashboard_render_capture:145",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::main:710",
+      "source": "tests/dashboard_ui/test_binding.c::main:732",
       "target": "tools/dashboard_host/render.c::dashboard_render_init:88",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::main:710",
+      "source": "tests/dashboard_ui/test_binding.c::main:732",
       "target": "tools/dashboard_host/render.c::dashboard_render_shutdown:183",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::main:710",
+      "source": "tests/dashboard_ui/test_binding.c::main:732",
       "target": "tools/dashboard_host/render.c::dashboard_render_step:127",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_auxiliary_unknowns_and_faults:119",
+      "source": "tests/dashboard_ui/test_binding.c::test_auxiliary_unknowns_and_faults:120",
       "target": "Src/app_dashboard_ui.c::app_ui_apply_aux_state:320",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_auxiliary_unknowns_and_faults:119",
-      "target": "tests/dashboard_ui/test_binding.c::assert_border_color:106",
+      "source": "tests/dashboard_ui/test_binding.c::test_auxiliary_unknowns_and_faults:120",
+      "target": "tests/dashboard_ui/test_binding.c::assert_border_color:107",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_battery_labels_and_storage_usage:213",
+      "source": "tests/dashboard_ui/test_binding.c::test_battery_labels_and_storage_usage:214",
       "target": "Src/app_dashboard_ui.c::app_ui_apply_dashboard_data:517",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_existing_demo:181",
+      "source": "tests/dashboard_ui/test_binding.c::test_board_demo_preview:267",
+      "target": "Src/app_dashboard_ui.c::app_ui_preview:550",
+      "kind": "call"
+    },
+    {
+      "source": "tests/dashboard_ui/test_binding.c::test_board_demo_preview:267",
+      "target": "Src/app_demo.c::app_demo_sample:13",
+      "kind": "call"
+    },
+    {
+      "source": "tests/dashboard_ui/test_binding.c::test_board_demo_preview:267",
+      "target": "Src/app_fault_history.c::app_fault_history_count:140",
+      "kind": "call"
+    },
+    {
+      "source": "tests/dashboard_ui/test_binding.c::test_existing_demo:182",
       "target": "Src/app_dashboard_ui.c::app_ui_update_aux_placeholders:257",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_fault_events_survive_recovery:418",
-      "target": "Src/app_dashboard_ui.c::app_ui_refresh:550",
+      "source": "tests/dashboard_ui/test_binding.c::test_fault_events_survive_recovery:440",
+      "target": "Src/app_dashboard_ui.c::app_ui_refresh:562",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_fault_events_survive_recovery:418",
+      "source": "tests/dashboard_ui/test_binding.c::test_fault_events_survive_recovery:440",
       "target": "Src/app_fault_history.c::app_fault_history_count:140",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_fault_events_survive_recovery:418",
+      "source": "tests/dashboard_ui/test_binding.c::test_fault_events_survive_recovery:440",
       "target": "Src/app_fault_history.c::app_fault_history_get:125",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_fault_events_survive_recovery:418",
-      "target": "tests/dashboard_ui/test_binding.c::find_event:359",
+      "source": "tests/dashboard_ui/test_binding.c::test_fault_events_survive_recovery:440",
+      "target": "tests/dashboard_ui/test_binding.c::find_event:381",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_fault_events_survive_recovery:418",
-      "target": "tests/dashboard_ui/test_binding.c::healthy_auxiliary:343",
+      "source": "tests/dashboard_ui/test_binding.c::test_fault_events_survive_recovery:440",
+      "target": "tests/dashboard_ui/test_binding.c::healthy_auxiliary:365",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_fault_events_survive_recovery:418",
-      "target": "tests/dashboard_ui/test_binding.c::known_battery:318",
+      "source": "tests/dashboard_ui/test_binding.c::test_fault_events_survive_recovery:440",
+      "target": "tests/dashboard_ui/test_binding.c::known_battery:340",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_framebuffer_capture:688",
+      "source": "tests/dashboard_ui/test_binding.c::test_framebuffer_capture:710",
       "target": "tools/dashboard_host/render.c::dashboard_render_capture:145",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_freshness_and_missing_siblings:367",
-      "target": "Src/app_dashboard_ui.c::app_ui_refresh:550",
+      "source": "tests/dashboard_ui/test_binding.c::test_freshness_and_missing_siblings:389",
+      "target": "Src/app_dashboard_ui.c::app_ui_refresh:562",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_freshness_and_missing_siblings:367",
-      "target": "tests/dashboard_ui/test_binding.c::healthy_auxiliary:343",
+      "source": "tests/dashboard_ui/test_binding.c::test_freshness_and_missing_siblings:389",
+      "target": "tests/dashboard_ui/test_binding.c::healthy_auxiliary:365",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_freshness_and_missing_siblings:367",
-      "target": "tests/dashboard_ui/test_binding.c::known_battery:318",
+      "source": "tests/dashboard_ui/test_binding.c::test_freshness_and_missing_siblings:389",
+      "target": "tests/dashboard_ui/test_binding.c::known_battery:340",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_initial_measurements_are_unknown:269",
-      "target": "Src/app_dashboard_ui.c::app_ui_refresh:550",
+      "source": "tests/dashboard_ui/test_binding.c::test_initial_measurements_are_unknown:291",
+      "target": "Src/app_dashboard_ui.c::app_ui_refresh:562",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_initial_measurements_are_unknown:269",
+      "source": "tests/dashboard_ui/test_binding.c::test_initial_measurements_are_unknown:291",
       "target": "Src/app_fault_history.c::app_fault_history_count:140",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_missing_runtime_screens_are_tolerated:610",
+      "source": "tests/dashboard_ui/test_binding.c::test_missing_runtime_screens_are_tolerated:632",
       "target": "Src/app_dashboard_ui.c::app_ui_apply_dashboard_data:517",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_missing_runtime_screens_are_tolerated:610",
-      "target": "Src/app_dashboard_ui.c::app_ui_refresh:550",
+      "source": "tests/dashboard_ui/test_binding.c::test_missing_runtime_screens_are_tolerated:632",
+      "target": "Src/app_dashboard_ui.c::app_ui_refresh:562",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_missing_runtime_screens_are_tolerated:610",
+      "source": "tests/dashboard_ui/test_binding.c::test_missing_runtime_screens_are_tolerated:632",
       "target": "Src/app_diagnostics_ui.c::app_diagnostics_ui_destroy:272",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_missing_runtime_screens_are_tolerated:610",
+      "source": "tests/dashboard_ui/test_binding.c::test_missing_runtime_screens_are_tolerated:632",
       "target": "Src/app_diagnostics_ui.c::app_diagnostics_ui_refresh_history:220",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_missing_runtime_screens_are_tolerated:610",
+      "source": "tests/dashboard_ui/test_binding.c::test_missing_runtime_screens_are_tolerated:632",
       "target": "Src/app_diagnostics_ui.c::app_diagnostics_ui_screen_name:261",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_missing_runtime_screens_are_tolerated:610",
-      "target": "tests/dashboard_ui/test_binding.c::healthy_auxiliary:343",
+      "source": "tests/dashboard_ui/test_binding.c::test_missing_runtime_screens_are_tolerated:632",
+      "target": "tests/dashboard_ui/test_binding.c::healthy_auxiliary:365",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_missing_runtime_screens_are_tolerated:610",
-      "target": "tests/dashboard_ui/test_binding.c::known_battery:318",
+      "source": "tests/dashboard_ui/test_binding.c::test_missing_runtime_screens_are_tolerated:632",
+      "target": "tests/dashboard_ui/test_binding.c::known_battery:340",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_navigation_and_history_pages:506",
-      "target": "Src/app_dashboard_ui.c::app_ui_refresh:550",
+      "source": "tests/dashboard_ui/test_binding.c::test_navigation_and_history_pages:528",
+      "target": "Src/app_dashboard_ui.c::app_ui_refresh:562",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_navigation_and_history_pages:506",
+      "source": "tests/dashboard_ui/test_binding.c::test_navigation_and_history_pages:528",
       "target": "Src/app_fault_history.c::app_fault_history_count:140",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_navigation_and_history_pages:506",
-      "target": "tests/dashboard_ui/test_binding.c::capture_screen:498",
+      "source": "tests/dashboard_ui/test_binding.c::test_navigation_and_history_pages:528",
+      "target": "tests/dashboard_ui/test_binding.c::capture_screen:520",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_navigation_and_history_pages:506",
-      "target": "tests/dashboard_ui/test_binding.c::click_button:491",
+      "source": "tests/dashboard_ui/test_binding.c::test_navigation_and_history_pages:528",
+      "target": "tests/dashboard_ui/test_binding.c::click_button:513",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_navigation_and_history_pages:506",
-      "target": "tests/dashboard_ui/test_binding.c::healthy_auxiliary:343",
+      "source": "tests/dashboard_ui/test_binding.c::test_navigation_and_history_pages:528",
+      "target": "tests/dashboard_ui/test_binding.c::healthy_auxiliary:365",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_navigation_and_history_pages:506",
-      "target": "tests/dashboard_ui/test_binding.c::known_battery:318",
+      "source": "tests/dashboard_ui/test_binding.c::test_navigation_and_history_pages:528",
+      "target": "tests/dashboard_ui/test_binding.c::known_battery:340",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_navigation_and_history_pages:506",
+      "source": "tests/dashboard_ui/test_binding.c::test_navigation_and_history_pages:528",
       "target": "tools/dashboard_host/render.c::dashboard_render_step:127",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_repeated_captures_keep_navigation_text:641",
-      "target": "Src/app_dashboard_ui.c::app_ui_refresh:550",
+      "source": "tests/dashboard_ui/test_binding.c::test_repeated_captures_keep_navigation_text:663",
+      "target": "Src/app_dashboard_ui.c::app_ui_refresh:562",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_repeated_captures_keep_navigation_text:641",
-      "target": "tests/dashboard_ui/test_binding.c::assert_faults_caption_has_pixels:623",
+      "source": "tests/dashboard_ui/test_binding.c::test_repeated_captures_keep_navigation_text:663",
+      "target": "tests/dashboard_ui/test_binding.c::assert_faults_caption_has_pixels:645",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_repeated_captures_keep_navigation_text:641",
-      "target": "tests/dashboard_ui/test_binding.c::healthy_auxiliary:343",
+      "source": "tests/dashboard_ui/test_binding.c::test_repeated_captures_keep_navigation_text:663",
+      "target": "tests/dashboard_ui/test_binding.c::healthy_auxiliary:365",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_repeated_captures_keep_navigation_text:641",
-      "target": "tests/dashboard_ui/test_binding.c::known_battery:318",
+      "source": "tests/dashboard_ui/test_binding.c::test_repeated_captures_keep_navigation_text:663",
+      "target": "tests/dashboard_ui/test_binding.c::known_battery:340",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_repeated_captures_keep_navigation_text:641",
+      "source": "tests/dashboard_ui/test_binding.c::test_repeated_captures_keep_navigation_text:663",
       "target": "tools/dashboard_host/render.c::dashboard_render_capture:145",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_repeated_captures_keep_navigation_text:641",
+      "source": "tests/dashboard_ui/test_binding.c::test_repeated_captures_keep_navigation_text:663",
       "target": "tools/dashboard_host/render.c::dashboard_render_step:127",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_touch_navigation:584",
-      "target": "tests/dashboard_ui/test_binding.c::touch_tap:573",
+      "source": "tests/dashboard_ui/test_binding.c::test_touch_navigation:606",
+      "target": "tests/dashboard_ui/test_binding.c::touch_tap:595",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_touch_navigation:584",
+      "source": "tests/dashboard_ui/test_binding.c::test_touch_navigation:606",
       "target": "tools/dashboard_host/render.c::dashboard_render_step:127",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_transient_storage_failure_is_retained:453",
-      "target": "Src/app_dashboard_ui.c::app_ui_refresh:550",
+      "source": "tests/dashboard_ui/test_binding.c::test_transient_storage_failure_is_retained:475",
+      "target": "Src/app_dashboard_ui.c::app_ui_refresh:562",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_transient_storage_failure_is_retained:453",
+      "source": "tests/dashboard_ui/test_binding.c::test_transient_storage_failure_is_retained:475",
       "target": "Src/app_fault_history.c::app_fault_history_count:140",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_transient_storage_failure_is_retained:453",
-      "target": "tests/dashboard_ui/test_binding.c::find_event:359",
+      "source": "tests/dashboard_ui/test_binding.c::test_transient_storage_failure_is_retained:475",
+      "target": "tests/dashboard_ui/test_binding.c::find_event:381",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_transient_storage_failure_is_retained:453",
-      "target": "tests/dashboard_ui/test_binding.c::healthy_auxiliary:343",
+      "source": "tests/dashboard_ui/test_binding.c::test_transient_storage_failure_is_retained:475",
+      "target": "tests/dashboard_ui/test_binding.c::healthy_auxiliary:365",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::test_transient_storage_failure_is_retained:453",
-      "target": "tests/dashboard_ui/test_binding.c::known_battery:318",
+      "source": "tests/dashboard_ui/test_binding.c::test_transient_storage_failure_is_retained:475",
+      "target": "tests/dashboard_ui/test_binding.c::known_battery:340",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::touch_tap:573",
+      "source": "tests/dashboard_ui/test_binding.c::touch_tap:595",
       "target": "tools/dashboard_host/render.c::dashboard_render_step:127",
       "kind": "call"
     },
     {
-      "source": "tests/dashboard_ui/test_binding.c::touch_tap:573",
+      "source": "tests/dashboard_ui/test_binding.c::touch_tap:595",
       "target": "tools/dashboard_host/render.c::dashboard_render_touch:73",
+      "kind": "call"
+    },
+    {
+      "source": "tests/demo/test_app_demo.c::main:9",
+      "target": "Src/app_demo.c::app_demo_history_init:81",
+      "kind": "call"
+    },
+    {
+      "source": "tests/demo/test_app_demo.c::main:9",
+      "target": "Src/app_demo.c::app_demo_observe:90",
+      "kind": "call"
+    },
+    {
+      "source": "tests/demo/test_app_demo.c::main:9",
+      "target": "Src/app_demo.c::app_demo_sample:13",
+      "kind": "call"
+    },
+    {
+      "source": "tests/demo/test_app_demo.c::main:9",
+      "target": "Src/app_fault_history.c::app_fault_history_count:140",
+      "kind": "call"
+    },
+    {
+      "source": "tests/demo/test_app_demo.c::main:9",
+      "target": "Src/app_fault_history.c::app_fault_history_get:125",
+      "kind": "call"
+    },
+    {
+      "source": "tests/demo/test_app_demo.c::main:9",
+      "target": "Src/app_fault_history.c::app_fault_history_pending:148",
       "kind": "call"
     },
     {
@@ -20622,7 +21050,7 @@
     },
     {
       "source": "tools/dashboard_host/main.c::main:239",
-      "target": "Src/app_dashboard_ui.c::app_ui_refresh:550",
+      "target": "Src/app_dashboard_ui.c::app_ui_refresh:562",
       "kind": "call"
     },
     {
