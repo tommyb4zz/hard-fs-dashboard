@@ -1,5 +1,29 @@
 # hard-fs-dashboard
 
+## Run on the connected board
+
+Live CAN measurements (normal startup):
+
+```sh
+./tools/start_board.sh live
+```
+
+Moving synthetic values on the physical LCD, with an amber **DEMO** label:
+
+```sh
+./tools/start_board.sh demo
+```
+
+Both commands build, program and verify the application and QSPI images, then start the
+board. The Demo build always starts with fake values and disables CAN and storage writes.
+Reflash `live` to use the slave controller. In a normal live build you can also hold the
+blue USER button while pressing/releasing black RESET to select demo for that boot;
+reset without holding USER to return to live CAN. Console command `s` reports the source.
+
+Use the board's CN14 ST-LINK USB data connection. The flash script prefers
+STM32CubeProgrammer and its external loader; if absent, it uses OpenOCD
+(`brew install open-ocd`). See [board operation and CAN contract](docs/BOARD_OPERATION.md).
+
 ## Live screens and malfunction history
 
 The dashboard uses received CAN measurements with per-signal validity/freshness; missing or

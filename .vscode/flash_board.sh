@@ -87,10 +87,27 @@ if [ ! -f "$FLASH_BIN" ]; then
     exit 1
 fi
 
-PROGRAMMER_CLI=$(find_programmer) || {
-    printf 'STM32_Programmer_CLI not found. Set STM32_PROGRAMMER_CLI or CUBE_BUNDLE_PATH.\n' >&2
-    exit 1
-}
+if ! PROGRAMMER_CLI=$(find_programmer); then
+    if ! command -v openocd >/dev/null 2>&1; then
+        printf 'Install STM32CubeProgrammer or OpenOCD (brew install open-ocd).\n' >&2
+        exit 1
+    fi
+    if [ "$CONNECT_PORT" != SWD ]; then
+        printf 'The OpenOCD fallback supports the board ST-LINK/SWD connection only.\n' >&2
+        exit 1
+    fi
+    export DASHBOARD_QSPI_BIN="$QSPI_BIN" DASHBOARD_FLASH_BIN="$FLASH_BIN"
+    export DASHBOARD_QSPI_ADDR="$QSPI_ADDR" DASHBOARD_FLASH_ADDR="$FLASH_ADDR"
+    printf 'Programming and verifying both images through OpenOCD/ST-LINK.\n'
+    exec openocd -f board/stm32h750b-disco.cfg -f "$SCRIPT_DIR/board_openocd.cfg" \
+        -c 'gdb_port disabled' -c 'tcl_port disabled' -c 'telnet_port disabled' \
+        -c init -c 'reset init' -c dashboard_qspi_recover \
+        -c 'flash write_image erase $::env(DASHBOARD_QSPI_BIN) $::env(DASHBOARD_QSPI_ADDR) bin' \
+        -c 'verify_image $::env(DASHBOARD_QSPI_BIN) $::env(DASHBOARD_QSPI_ADDR) bin' \
+        -c 'flash write_image erase $::env(DASHBOARD_FLASH_BIN) $::env(DASHBOARD_FLASH_ADDR) bin' \
+        -c 'verify_image $::env(DASHBOARD_FLASH_BIN) $::env(DASHBOARD_FLASH_ADDR) bin' \
+        -c 'reset run' -c shutdown
+fi
 
 EXTERNAL_LOADER=$(find_loader "$PROGRAMMER_CLI") || {
     printf 'External loader %s not found. Set STM32_EXTERNAL_LOADER if needed.\n' "$LOADER_NAME" >&2
