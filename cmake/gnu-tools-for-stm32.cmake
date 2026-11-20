@@ -183,8 +183,23 @@ set(CMAKE_CXX_COMPILER_RANLIB       ${CMAKE_RANLIB})
 set(CMAKE_OBJCOPY                   ${TOOLCHAIN_PREFIX}objcopy)
 set(CMAKE_SIZE                      ${TOOLCHAIN_PREFIX}size)
 
-set(CMAKE_EXECUTABLE_SUFFIX_ASM     ".elf")
-set(CMAKE_EXECUTABLE_SUFFIX_C       ".elf")
-set(CMAKE_EXECUTABLE_SUFFIX_CXX     ".elf")
+ifeq ($(OS),Windows_NT)
+    DETECTED_OS := Windows
+else
+    DETECTED_OS := $(shell uname -s)
+endif
+
+all:
+	@echo "Running on $(DETECTED_OS)"
+
+ifeq (DETECTED_OS, Windows)
+    set(CMAKE_EXECUTABLE_SUFFIX_ASM     ".exe")
+    set(CMAKE_EXECUTABLE_SUFFIX_C       ".exe")
+    set(CMAKE_EXECUTABLE_SUFFIX_CXX     ".exe")
+else
+    set(CMAKE_EXECUTABLE_SUFFIX_ASM     ".elf")
+    set(CMAKE_EXECUTABLE_SUFFIX_C       ".elf")
+    set(CMAKE_EXECUTABLE_SUFFIX_CXX     ".elf")
+endif
 
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
