@@ -169,11 +169,7 @@ set(CPP_FLAGS                       "${FLAGS} -fno-rtti -fno-exceptions -fno-thr
 
 set(CMAKE_C_FLAGS                   ${FLAGS})
 set(CMAKE_CXX_FLAGS                 ${CPP_FLAGS})
-
-
-
 message(STATUS "CMAKE_HOST_WIN32 = ${CMAKE_HOST_WIN32}")
-
 if (CMAKE_HOST_WIN32)
     set(CMAKE_C_COMPILER                ${TOOLCHAIN_PREFIX}gcc.exe)
     set(CMAKE_ASM_COMPILER              ${CMAKE_C_COMPILER})
@@ -201,5 +197,4 @@ elseif (NOT CMAKE_HOST_WIN32)
     set(CMAKE_OBJCOPY                   ${TOOLCHAIN_PREFIX}objcopy.elf)
     set(CMAKE_SIZE                      ${TOOLCHAIN_PREFIX}size.elf)
 endif()
-
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
