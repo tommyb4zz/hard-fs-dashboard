@@ -198,7 +198,7 @@ static bool app_emmc_log_record_crc_is_valid(const app_emmc_log_record_t *record
     return false;
   }
 
-  return record->crc32 == app_emmc_log_record_crc32(record);
+  return record->crc32 == app_emmc_log_record_crc32(record); /* this is how you put it in the storage */
 }
 
 /**
