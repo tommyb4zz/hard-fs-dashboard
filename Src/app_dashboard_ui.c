@@ -234,8 +234,6 @@ static const char *app_ui_drive_mode_to_text(app_drive_mode_t drive_mode) {
     return "N";
   case APP_DRIVE_MODE_DRIVE:
     return "D";
-  case APP_DRIVE_MODE_REVERSE:
-    return "R";
   case APP_DRIVE_MODE_COUNT:
   default:
     return "-";
